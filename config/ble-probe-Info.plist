@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>com.ben.codex-eink.ble-probe.dev</string>
+    <key>CFBundleExecutable</key><string>eink-ble-probe</string>
+    <key>CFBundleName</key><string>EInk BLE Probe</string>
+    <key>CFBundleDisplayName</key><string>EInk BLE Probe</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>在你点击开始扫描后查找蓝牙墨水屏；仅连接你明确选择的设备并验证服务，然后断开。不会发送画面或更改固件。</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>BLEProbeSigningContext</key><string>ad-hoc-development</string>
+</dict>
+</plist>

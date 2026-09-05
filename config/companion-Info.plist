@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.ben.codex-eink.companion.dev</string>
+	<key>CFBundleExecutable</key>
+	<string>eink-companion</string>
+	<key>CFBundleName</key>
+	<string>Codex Ink</string>
+	<key>CFBundleDisplayName</key>
+	<string>Codex Ink</string>
+	<key>CFBundleIconFile</key>
+	<string>CodexInk</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.2.1</string>
+	<key>CFBundleVersion</key>
+	<string>3</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>连接你选择的墨水屏并同步任务状态。首次启动仅预览，启用同步后才发送画面。</string>
+</dict>
+</plist>

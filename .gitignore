@@ -1,0 +1,9 @@
+.superpowers/
+.build/
+.DS_Store
+design-qa-artifacts/
+.venv/
+__pycache__/
+*.py[cod]
+output/
+*.log

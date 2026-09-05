@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codex Ink · Codex 墨水屏看板 · 400×300</title>
+  <style>
+    @font-face { font-family: "Source Han Sans CN"; src: url("./assets/fonts/SourceHanSansCN-Bold.otf") format("opentype"); font-weight: 700; font-style: normal; font-display: block; }
+    :root { --white: #ffffff; --black: #000000; --third: #c62828; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; background: var(--white); color: var(--black); font-family: "Source Han Sans CN", sans-serif; font-weight: 700; }
+    body { overflow: hidden; }
+    button { font: inherit; }
+    .editor-toolbar { position: fixed; z-index: 10; top: 12px; left: 50%; display: flex; align-items: center; gap: 8px; padding: 8px; transform: translateX(-50%); border: 2px solid var(--black); border-radius: 4px; background: var(--white); }
+    .editor-toolbar button { min-height: 32px; padding: 0 12px; border: 1px solid var(--black); border-radius: 2px; background: var(--white); color: var(--black); cursor: pointer; }
+    .editor-toolbar button:hover, .editor-toolbar button:focus-visible { background: var(--black); color: var(--white); outline: 0; }
+    .toolbar-note { font-size: 12px; white-space: nowrap; }
+    .stage { position: fixed; inset: 0; display: grid; place-items: center; padding-top: 52px; overflow: hidden; background: var(--white); }
+    .canvas-shell, .artboard { width: 400px; height: 300px; }
+    .artboard { font-synthesis: none; position: relative; overflow: hidden; background: var(--white); color: var(--black); }
+    .screen-section { position: absolute; left: 10px; width: 380px; overflow: hidden; background: var(--white); }
+
+    .topbar { top: 0; height: 32px; padding-top: 8px; display: grid; grid-template-columns: 1fr auto; align-items: start; }
+    .topbar::after { content: ""; position: absolute; top: 28px; left: 0; right: 0; height: 1px; background: var(--black); }
+    .account-meta { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 4px; }
+    .account-name, .plan-type, .date-wrap { overflow: hidden; font-size: 12px; line-height: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+
+    .quota-panel { top: 32px; height: 92px; }
+    .quota-label { position: absolute; top: 8px; left: 0; margin: 0; font-size: 14px; line-height: 16px; font-weight: 700; }
+    .balance-value { position: absolute; top: 28px; left: 0; font-size: 48px; line-height: 44px; font-weight: 700; letter-spacing: -2px; }
+    .used-value { position: absolute; top: 32px; right: 0; font-size: 18px; line-height: 20px; font-weight: 700; white-space: nowrap; }
+    .reset-note { position: absolute; top: 56px; right: 0; font-size: 12px; line-height: 16px; font-weight: 700; white-space: nowrap; }
+    .segmented-progress { position: absolute; left: 0; bottom: 8px; display: grid; gap: 1px; width: 380px; height: 8px; cursor: ew-resize; }
+    .segment { height: 8px; overflow: hidden; border: 0; border-radius: 0; background: var(--white); }
+    .segment.remaining { background: var(--black); }
+    .segment.used { display: grid; grid-template-rows: repeat(8, 1px); }
+    .dither-pixel { width: 1px; height: 1px; background: var(--white); }
+    .dither-pixel.black { background: var(--black); }
+
+    .usage-panel { top: 124px; height: 52px; }
+    .usage-panel::after { content: ""; position: absolute; top: 44px; left: 0; right: 0; border-top: 1px dashed var(--black); }
+    .usage-heading { position: absolute; top: 4px; left: 0; margin: 0; font-size: 14px; line-height: 16px; font-weight: 700; }
+    #usageChart { position: absolute; top: 24px; left: 0; display: block; width: 380px; height: 16px; }
+    .usage-updated { position: absolute; right: 0; top: 4px; font-size: 12px; line-height: 16px; font-weight: 700; white-space: nowrap; }
+
+    .tasks-panel { top: 176px; height: 124px; }
+    .task-list { margin: 0; padding: 0; list-style: none; }
+    .task-row { position: relative; height: 40px; }
+    .task-row:not(:last-child)::after { content: ""; position: absolute; top: 36px; left: 0; right: 0; border-top: 1px dashed var(--black); }
+    .task-copy { position: absolute; left: 0; top: 0; width: 292px; }
+    .task-name { overflow: hidden; font-size: 14px; line-height: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .task-source { overflow: hidden; font-size: 12px; line-height: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .status-badge { position: absolute; right: 0; top: 4px; display: inline-grid; place-items: center; width: 72px; height: 24px; border: 1px solid var(--black); border-radius: 2px; background: var(--white); color: var(--black); font-size: 14px; line-height: 16px; font-weight: 700; white-space: nowrap; }
+    .status-badge.waiting { border-color: var(--third); background: var(--third); color: var(--white); }
+    .status-badge.running { background: var(--black); color: var(--white); }
+    .status-badge.queued { border-width: 2px; background: var(--white); color: var(--black); }
+
+    [contenteditable="true"] { outline: 1px solid var(--third); outline-offset: 0; caret-color: var(--third); }
+    body.editing .segmented-progress::after { content: ""; position: absolute; inset: -2px; border: 2px solid var(--third); pointer-events: none; }
+    body.screen-preview .editor-toolbar { display: none; }
+    body.screen-preview .stage { place-items: start; padding: 0; }
+    @media print { .editor-toolbar { display: none; } .stage { position: static; place-items: start; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="editor-toolbar" aria-label="编辑工具栏">
+    <button type="button" id="toggleEdit">编辑内容</button>
+    <button type="button" id="resetEdit">恢复初始</button>
+    <button type="button" id="downloadHtml">下载 HTML</button>
+    <span class="toolbar-note">原生 400×300 · 黑白红三色输出</span>
+  </div>
+
+  <main class="stage">
+    <div class="canvas-shell" id="canvasShell">
+      <section class="artboard" id="artboard" aria-label="Codex Ink 墨水屏状态看板">
+        <header class="screen-section topbar" data-section="header">
+          <div class="account-meta"><span class="account-name" data-editable data-field="account">demo@example.com</span><span class="plan-type" data-editable data-field="plan">Pro 20x</span></div>
+          <div class="date-wrap" data-editable data-field="date">09月01日 周二</div>
+        </header>
+
+        <section class="screen-section quota-panel" data-section="quota" aria-label="额度使用与重置时间">
+          <h2 class="quota-label" data-editable data-field="quota-title">每周额度 · 剩余</h2>
+          <div class="balance-value" data-editable data-field="remaining" data-progress-label="balanceProgress">61%</div>
+          <div class="used-value" data-editable data-field="used">已使用 39%</div>
+          <div class="reset-note" data-editable data-field="reset">下次重置 09/18 15:02</div>
+          <div class="segmented-progress" id="balanceProgress" data-progress="61" aria-label="剩余额度 61%"></div>
+        </section>
+
+        <section class="screen-section usage-panel" data-section="usage" aria-label="30 天用量概览">
+          <h2 class="usage-heading" data-editable data-field="usage-title">30 天用量</h2>
+          <canvas id="usageChart" width="380" height="16" aria-label="近 30 天用量柱状图"></canvas>
+          <span class="usage-updated" id="updatedAt" data-editable data-field="updated">最后更新 10:28</span>
+        </section>
+
+        <section class="screen-section tasks-panel" data-section="tasks" aria-label="当前 Codex 任务">
+          <ol class="task-list">
+            <li class="task-row"><div class="task-copy"><div class="task-name" data-editable data-field="task-1-project">Codex Ink</div><div class="task-source" data-editable data-field="task-1-conversation">墨水屏界面与蓝牙同步</div></div><span class="status-badge waiting" data-editable data-field="task-1-status">等待指令</span></li>
+            <li class="task-row"><div class="task-copy"><div class="task-name" data-editable data-field="task-2-project">3D 打印机云端服务</div><div class="task-source" data-editable data-field="task-2-conversation">云端状态同步</div></div><span class="status-badge running" data-editable data-field="task-2-status">运行中</span></li>
+            <li class="task-row"><div class="task-copy"><div class="task-name" data-editable data-field="task-3-project">天气面板</div><div class="task-source" data-editable data-field="task-3-conversation">天气与空气质量</div></div><span class="status-badge queued" data-editable data-field="task-3-status">排队中</span></li>
+          </ol>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'codex-eink-dashboard-native-v1';
+      const SEGMENT_COUNT = 50;
+      const CELL_PIXELS = 380 - (SEGMENT_COUNT - 1);
+      const meter = document.getElementById('balanceProgress');
+      const editableElements = [...document.querySelectorAll('[data-editable][data-field]')];
+      const initialTexts = Object.fromEntries(editableElements.map(element => [element.dataset.field, element.innerHTML]));
+      if (new URLSearchParams(window.location.search).has('screen')) document.body.classList.add('screen-preview');
+
+      for (let index = 0; index < SEGMENT_COUNT; index += 1) {
+        const segmentWidth = Math.floor((index + 1) * CELL_PIXELS / SEGMENT_COUNT) - Math.floor(index * CELL_PIXELS / SEGMENT_COUNT);
+        const segment = document.createElement('span');
+        segment.className = 'segment';
+        segment.dataset.segment = String(index + 1);
+        segment.style.width = `${segmentWidth}px`;
+        segment.style.gridTemplateColumns = `repeat(${segmentWidth}, 1px)`;
+        for (let pixel = 0; pixel < segmentWidth * 8; pixel += 1) {
+          const dot = document.createElement('span');
+          const row = Math.floor(pixel / segmentWidth);
+          const column = pixel % segmentWidth;
+          dot.className = `dither-pixel${(row + column + index) % 2 === 0 ? ' black' : ''}`;
+          segment.appendChild(dot);
+        }
+        meter.appendChild(segment);
+      }
+      meter.style.gridTemplateColumns = [...meter.children].map(segment => segment.style.width).join(' ');
+
+      function drawChart() {
+        const canvas = document.getElementById('usageChart');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const values = [2,2,3,1,2,2,1,2,8,3,2,4,6,7,5,9,6,3,2,4,5,2,1,7,9,6,4,3,4,4,3,2,6,1,2,3,2,4,5,3,1,5,3,2,6,6];
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 380, 16);
+        values.forEach((value, index) => {
+          const height = value <= 0 ? 1 : Math.max(4, Math.round(value / 9 * 16));
+          const slotLeft = Math.floor(index * 380 / values.length);
+          const slotRight = Math.floor((index + 1) * 380 / values.length);
+          const barWidth = Math.max(2, Math.min(4, slotRight - slotLeft - 3));
+          ctx.fillStyle = index === 32 ? '#c62828' : '#000000';
+          ctx.fillRect(slotLeft + 1, 16 - height, barWidth, height);
+        });
+      }
+
+      function setProgress(value, persist = true) {
+        const safeValue = Math.max(0, Math.min(100, Math.round(value)));
+        const remainingSegments = Math.round(safeValue * SEGMENT_COUNT / 100);
+        meter.dataset.progress = String(safeValue);
+        [...meter.children].forEach((segment, index) => {
+          segment.classList.toggle('remaining', index < remainingSegments);
+          segment.classList.toggle('used', index >= remainingSegments);
+        });
+        document.querySelector('[data-progress-label="balanceProgress"]').textContent = `${safeValue}%`;
+        document.querySelector('[data-field="used"]').textContent = `已使用 ${100 - safeValue}%`;
+        meter.setAttribute('aria-label', `剩余额度 ${safeValue}%`);
+        if (persist) saveState();
+      }
+
+      function captureState() { return { texts: Object.fromEntries(editableElements.map(element => [element.dataset.field, element.innerHTML])), progress: Number(meter.dataset.progress || 0) }; }
+      function applyState(state) {
+        if (!state) return;
+        editableElements.forEach(element => { if (typeof state.texts?.[element.dataset.field] === 'string') element.innerHTML = state.texts[element.dataset.field]; });
+        setProgress(state.progress ?? 61, false);
+      }
+      function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(captureState())); }
+      function setEditing(enabled) {
+        document.body.classList.toggle('editing', enabled);
+        editableElements.forEach(element => { element.contentEditable = enabled ? 'true' : 'false'; });
+        document.getElementById('toggleEdit').textContent = enabled ? '完成编辑' : '编辑内容';
+      }
+      function resetState() {
+        localStorage.removeItem(STORAGE_KEY);
+        editableElements.forEach(element => { element.innerHTML = initialTexts[element.dataset.field]; });
+        setProgress(61, false);
+        saveState();
+      }
+      function downloadCurrentHtml() {
+        saveState();
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelector('.editor-toolbar')?.remove();
+        clone.querySelectorAll('[contenteditable]').forEach(element => element.setAttribute('contenteditable', 'false'));
+        const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], { type: 'text/html;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'codex-ink-400x300.html';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }
+      function updateProgressFromPointer(event) {
+        if (!document.body.classList.contains('editing')) return;
+        const rect = meter.getBoundingClientRect();
+        setProgress((event.clientX - rect.left) / rect.width * 100);
+      }
+
+      meter.addEventListener('pointerdown', event => { updateProgressFromPointer(event); meter.setPointerCapture(event.pointerId); });
+      meter.addEventListener('pointermove', event => { if (meter.hasPointerCapture(event.pointerId)) updateProgressFromPointer(event); });
+      editableElements.forEach(element => element.addEventListener('input', saveState));
+      document.getElementById('toggleEdit').addEventListener('click', () => setEditing(!document.body.classList.contains('editing')));
+      document.getElementById('resetEdit').addEventListener('click', resetState);
+      document.getElementById('downloadHtml').addEventListener('click', downloadCurrentHtml);
+
+      try { applyState(JSON.parse(localStorage.getItem(STORAGE_KEY))); } catch (_) { setProgress(61, false); }
+      if (!localStorage.getItem(STORAGE_KEY)) setProgress(61, false);
+      setEditing(false);
+      drawChart();
+    })();
+  </script>
+</body>
+</html>

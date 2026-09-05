@@ -1,0 +1,13 @@
+{
+  "version": "public-v1.2",
+  "source": "docs/release-assets/render_demo.py",
+  "data": "fictional",
+  "width": 400,
+  "height": 300,
+  "colors": [
+    "#000000",
+    "#FFFFFF",
+    "#C62828"
+  ],
+  "sha256": "2a95dd2ce13ad6fc29d3b0adc0c565b02b8302fc050e2b6e1bbef84cb758cdad"
+}
