@@ -22,10 +22,6 @@ BLACK = (0, 0, 0)
 THIRD = (198, 40, 40)
 THRESHOLD = 144
 ROOT = Path(__file__).resolve().parents[1]
-PINGFANG_PATH = Path(
-    "/System/Library/AssetsV2/com_apple_MobileAsset_Font8/"
-    "86ba2c91f017a3749571a82f2c6d890ac7ffb2fb.asset/AssetData/PingFang.ttc"
-)
 SOURCE_HAN_MEDIUM = ROOT / "assets/fonts/SourceHanSansCN-Medium.otf"
 SOURCE_HAN_BOLD = ROOT / "assets/fonts/SourceHanSansCN-Bold.otf"
 FONT_SIZES = (10, 11, 12, 13, 14, 16)
@@ -88,9 +84,9 @@ class RenderProfile:
 
 def comparison_profile(stage: ComparisonStage) -> RenderProfile:
     if stage is ComparisonStage.CURRENT:
-        return RenderProfile(stage, PINGFANG_PATH, PINGFANG_PATH, 7, 7, 12, 14, 12, 12, 12, True, 144, 144, 0.0)
+        return RenderProfile(stage, SOURCE_HAN_MEDIUM, SOURCE_HAN_MEDIUM, 0, 0, 12, 14, 12, 12, 12, True, 144, 144, 0.0)
     if stage is ComparisonStage.SIZE:
-        return RenderProfile(stage, PINGFANG_PATH, PINGFANG_PATH, 7, 7, 14, 14, 14, 14, 12, False, 144, 144, 0.0)
+        return RenderProfile(stage, SOURCE_HAN_MEDIUM, SOURCE_HAN_MEDIUM, 0, 0, 14, 14, 14, 14, 12, False, 144, 144, 0.0)
     if stage is ComparisonStage.FONT_WEIGHT:
         return RenderProfile(stage, SOURCE_HAN_MEDIUM, SOURCE_HAN_BOLD, 0, 0, 14, 14, 14, 14, 12, False, 144, 144, 0.0)
     return RenderProfile(stage, SOURCE_HAN_MEDIUM, SOURCE_HAN_BOLD, 0, 0, 14, 14, 14, 14, 12, False, 128, 144, 0.25)
@@ -137,7 +133,7 @@ def quota_cell_spans() -> tuple[tuple[int, int], ...]:
     return tuple(spans)
 
 
-def _font(size: int, path: Path = PINGFANG_PATH, index: int = 7) -> ImageFont.FreeTypeFont:
+def _font(size: int, path: Path = SOURCE_HAN_MEDIUM, index: int = 0) -> ImageFont.FreeTypeFont:
     if not isinstance(size, int):
         raise ValueError("font size must be an integer")
     return ImageFont.truetype(str(path), size=size, index=index, layout_engine=ImageFont.Layout.BASIC)
@@ -150,8 +146,8 @@ def render_text_mask(
     *,
     threshold: int = THRESHOLD,
     embolden: float = 0.0,
-    font_path: Path = PINGFANG_PATH,
-    font_index: int = 7,
+    font_path: Path = SOURCE_HAN_MEDIUM,
+    font_index: int = 0,
 ) -> Image.Image:
     """Rasterize once at final size; return a binary glyph mask without dithering."""
     if not 0 <= embolden <= 1:
@@ -405,7 +401,7 @@ def render_font_test() -> Image.Image:
         draw_text(image, (30, y), text, size, TextMode.MONO)
         draw_text(image, (204, y), str(size), 10, TextMode.GRAYSCALE_THRESHOLD)
         draw_text(image, (226, y), text, size, TextMode.GRAYSCALE_THRESHOLD)
-    draw_text(image, (8, 280), "单一字体：PingFang SC Medium · 原生 400×300", 10, TextMode.GRAYSCALE_THRESHOLD)
+    draw_text(image, (8, 280), "单一字体：Source Han CN Medium · 原生 400×300", 10, TextMode.GRAYSCALE_THRESHOLD)
     return image
 
 

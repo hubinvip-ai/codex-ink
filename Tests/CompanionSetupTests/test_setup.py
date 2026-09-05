@@ -158,7 +158,12 @@ class SetupTests(unittest.TestCase):
         self.plist = self.home / ('Library/LaunchAgents/' + LABEL + '.plist')
         self.runtime = self.home / 'Runtime With Spaces'
         shutil.copytree(ROOT / 'tools', self.runtime / 'tools', ignore=shutil.ignore_patterns('__pycache__'))
-        self.python = Path(sys.executable).resolve()
+        # This suite validates installer paths; hook execution uses sys.executable
+        # separately. Avoid depending on a host-wide Python installation's modes.
+        self.python = self.home / 'bin/python3'
+        self.python.parent.mkdir(mode=0o700)
+        self.python.write_text('#!/bin/sh\nexit 99\n')
+        self.python.chmod(0o700)
         self.system = FakeSystem()
         self.setup = self.mod.Setup(home=self.home, state_dir=self.state,
                                     cwd=self.home, system=self.system)
@@ -362,6 +367,9 @@ class SetupTests(unittest.TestCase):
         self.assert_blocked(self.install(), 'unsafe_path')
         self.assertEqual(list(outside.iterdir()), [])
         self.state.unlink()
+        self.python.chmod(0o777)
+        self.assert_blocked(self.install(), 'unsafe_path')
+        self.python.chmod(0o700)
         (self.runtime / 'tools/companion_setup.py').chmod(0o666)
         self.assert_blocked(self.install(), 'unsafe_path')
         self.assertFalse(self.config.exists())

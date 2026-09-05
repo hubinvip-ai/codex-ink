@@ -10,7 +10,7 @@ from tools.eink_text_renderer import (
     ComparisonStage,
     FONT_SIZES,
     FINAL_PROFILE,
-    PINGFANG_PATH,
+    SOURCE_HAN_MEDIUM,
     REQUIRED_TEXT,
     TextMode,
     comparison_profile,
@@ -148,8 +148,8 @@ class TextRendererTests(unittest.TestCase):
         production = render_dashboard(TextMode.GRAYSCALE_THRESHOLD)
         semibold = render_dashboard(
             TextMode.GRAYSCALE_THRESHOLD,
-            profile=replace(FINAL_PROFILE, medium_font=PINGFANG_PATH, bold_font=PINGFANG_PATH,
-                            regular_font=PINGFANG_PATH, medium_index=11, bold_index=11, regular_index=11),
+            profile=replace(FINAL_PROFILE, medium_font=SOURCE_HAN_MEDIUM, bold_font=SOURCE_HAN_MEDIUM,
+                            regular_font=SOURCE_HAN_MEDIUM, medium_index=0, bold_index=0, regular_index=0),
         )
         black_pixels = lambda image: sum(pixel == (0, 0, 0) for pixel in image.getdata())
         self.assertGreater(black_pixels(production), black_pixels(semibold))
