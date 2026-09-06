@@ -77,7 +77,7 @@ def load_hook_state(path: Path) -> dict[str, Any]:
         return empty_hook_state()
 
 
-def render_real_snapshot(app: AppServerSnapshot, hook_state: dict[str, Any], now: datetime):
+def render_real_snapshot(app: AppServerSnapshot, hook_state: dict[str, Any], now: datetime, *, language="zh-CN"):
     snapshot = build_dashboard_snapshot(
         hook_state=hook_state,
         threads=app.threads,
@@ -86,7 +86,7 @@ def render_real_snapshot(app: AppServerSnapshot, hook_state: dict[str, Any], now
         now=now,
         account=app.account or {},
     )
-    return snapshot, render_dashboard(profile=FINAL_PROFILE, data=snapshot)
+    return snapshot, render_dashboard(profile=FINAL_PROFILE, data=snapshot, language=language)
 
 
 def _image_bytes(image) -> bytes:

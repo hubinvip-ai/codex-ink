@@ -58,10 +58,12 @@ def main(argv=None):
     preview = commands.add_parser('preview')
     preview.add_argument('--codex-binary', type=Path, required=True)
     preview.add_argument('--validated', action='store_true')
+    preview.add_argument('--language', choices=('zh-CN','en'), default='zh-CN')
     work = commands.add_parser('work')
     work.add_argument('--codex-binary', type=Path, required=True)
     work.add_argument('--push-binary', type=Path, required=True)
     work.add_argument('--device', required=True)
+    work.add_argument('--language', choices=('zh-CN','en'), default='zh-CN')
     args = parser.parse_args(argv)
     try:
         journal = SyncJournal(args.state_dir)
@@ -84,7 +86,7 @@ def main(argv=None):
                 cancel_event=threading.Event()
                 for sig in (signal.SIGTERM,signal.SIGINT):
                     signal.signal(sig,lambda number,frame:cancel_event.set())
-            renderer = CodexRenderer(args.codex_binary,validated=getattr(args,'validated',False),cancel_event=cancel_event)
+            renderer = CodexRenderer(args.codex_binary,validated=getattr(args,'validated',False),cancel_event=cancel_event,language=args.language)
             sender = CLISender(args.push_binary, args.device) if args.command == 'work' else None
             worker = ReliableWorker(journal, args.state_file, renderer, sender)
             if args.command == 'preview':

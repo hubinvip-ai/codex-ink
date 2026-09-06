@@ -187,6 +187,27 @@ final class CompanionModel: ObservableObject {
         }
     }
 
+    func text(_ source: String) -> String { settings.language.text(source) }
+
+    func setLanguage(_ language: DisplayLanguage) async {
+        guard canMutate, language != settings.language else { return }
+        busy = true
+        guard await quiesce() else { busy = false; return }
+        do {
+            var updated = settings
+            updated.language = language
+            try persist(updated)
+            previewImage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            busy = false
+            await ensureWorker()
+            return
+        }
+        busy = false
+        await preview()
+    }
+
     func savePaths(codex: String, python: String) async {
         guard canMutate else { return }
         busy = true; defer { busy = false }

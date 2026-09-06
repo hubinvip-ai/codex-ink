@@ -8,11 +8,11 @@ Keep your Codex usage and task status on a small display beside your Mac. Codex 
 
 ![Codex Ink running on a desktop e-ink display beside a Mac](docs/release-assets/desktop-hero-v1.png)
 
-*Edited from a real desk photograph for privacy and composition. The screen uses fictional demo data. The current interface is in Simplified Chinese.*
+*Edited from a real desk photograph for privacy and composition. The screen uses fictional demo data. The interface supports Simplified Chinese and English.*
 
 ## Development preview
 
-The current app version is **0.2.1**. Source builds and the local workflow have been tested on one Apple Silicon Mac. A standalone installer, Developer ID signing, notarization and a second-machine validation are still pending.
+The current app version is **0.3.0**. Source builds and the local workflow have been tested on one Apple Silicon Mac. A standalone installer, Developer ID signing, notarization and a second-machine validation are still pending.
 
 Project code is licensed under [GPL-3.0-only](LICENSE). Fonts and other third-party resources retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). This preview is built from source; no ready-to-install app download is provided.
 
@@ -73,9 +73,9 @@ Fresh installations start in preview-only mode. Login startup is opt-in and reme
 
 ## Validation status
 
-The public source snapshot passed **239 Python test cases**, including a native test driver with **52 Swift checks**, plus 2 core Swift suites. A fresh virtual environment, release build, app packaging and strict ad-hoc signature verification were checked locally. See [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions) for hosted build results. On the maintainer’s Mac, configuration recovery, hook migration and automatic refresh were also checked; these are separate from hardware-free tests.
+The public source snapshot passed **243 Python test cases**, including a native test driver with **55 Swift checks**, plus 2 core Swift suites. A fresh virtual environment, release build, app packaging and strict ad-hoc signature verification were checked locally. See [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions) for hosted build results. On the maintainer’s Mac, configuration recovery, hook migration and automatic refresh were also checked; these are separate from hardware-free tests.
 
-These checks do not establish physical display appearance, a real logout/login cycle, 24-hour reliability or compatibility with another Mac. See the [release notes](docs/releases/v0.2.1.md). Counts refer to a recorded local check, not a hosted CI badge.
+These checks do not establish physical display appearance, a real logout/login cycle, 24-hour reliability or compatibility with another Mac. See the [release notes](docs/releases/v0.3.0.md). Counts refer to a recorded local check, not a hosted CI badge.
 
 ## Acknowledgements
 
@@ -96,3 +96,9 @@ See [full acknowledgements](ACKNOWLEDGEMENTS.md) for project links and each cont
 For a problem report, include macOS/CPU, app and Codex versions, display details and the failing step. Redact account labels, task names, local paths and credentials from logs or screenshots.
 
 Codex Ink is an independent project and is not affiliated with or endorsed by OpenAI.
+
+## Interface language
+
+Choose Simplified Chinese or English in **Overview → 语言 / Language**. Settings, the menu bar, previews and display frames follow the saved choice. Existing configurations remain in Chinese. Project, task and device names keep their original text.
+
+![English native dashboard with fictional data](docs/ui-baseline/public-v1.3/native-en.png)

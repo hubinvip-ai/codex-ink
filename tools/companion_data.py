@@ -13,7 +13,7 @@ class DataUnavailable(ValueError):
     pass
 
 
-def validated_snapshot(app, hook_state, now):
+def validated_snapshot(app, hook_state, now, *, language="zh-CN"):
     rates = app.rates
     by_id = rates.get('rateLimitsByLimitId') or {}
     rate = by_id.get('codex') if isinstance(by_id, dict) else None
@@ -67,7 +67,7 @@ def validated_snapshot(app, hook_state, now):
         record={key:thread.get(key) for key in ('id','cwd','updatedAt')}
         # The legacy mapper can use prompt preview as a missing-name fallback.
         # A desk display is authorized for task names, not conversation bodies.
-        record['name']=name if isinstance(name,str) and name.strip() else '未命名任务'
+        record['name']=name if isinstance(name,str) and name.strip() else ('Untitled task' if language == 'en' else '未命名任务')
         threads.append(record)
     snapshot = build_dashboard_snapshot(hook_state=hook_state, threads=threads,
         rates={'rateLimits':{'primary':window}}, usage={}, now=now, account=app.account)

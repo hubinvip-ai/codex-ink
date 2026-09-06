@@ -303,8 +303,12 @@ def render_dashboard(
     mode: TextMode = TextMode.GRAYSCALE_THRESHOLD,
     profile: RenderProfile = FINAL_PROFILE,
     data: DashboardSnapshot | None = None,
+    language: str = "zh-CN",
 ) -> Image.Image:
     """Draw the approved layout directly on its final 400x300 pixel canvas."""
+    if language not in ("zh-CN", "en"):
+        raise ValueError("unsupported display language")
+    english = language == "en"
     image = Image.new("RGB", (WIDTH, HEIGHT), WHITE)
     draw = ImageDraw.Draw(image)
 
@@ -312,6 +316,13 @@ def render_dashboard(
     if data and data.updated_at_epoch:
         weekday = "一二三四五六日"[datetime.fromtimestamp(data.updated_at_epoch).astimezone().weekday()]
         date_label = datetime.fromtimestamp(data.updated_at_epoch).astimezone().strftime("%m月%d日") + f" 周{weekday}"
+    if english:
+        stamp = datetime.fromtimestamp(data.updated_at_epoch).astimezone() if data and data.updated_at_epoch else None
+        date_label = (stamp.strftime("%m/%d") + " " + ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")[stamp.weekday()]) if stamp else "09/01 Tue"
+    def right_text(y, text, size, *, weight="medium"):
+        path, index, threshold, embolden = _glyph_parameters(profile, size, weight)
+        width = render_text_mask(text, size, mode, font_path=path, font_index=index, threshold=threshold, embolden=embolden).width
+        draw_text(image, (390 - width, y), text, size, mode, profile=profile, weight=weight)
     remaining = data.remaining_percent if data else 61
     used = data.used_percent if data else 39
     reset_label = _format_epoch(data.reset_at_epoch if data else 0, "%m/%d %H:%M", "09/18 15:02")
@@ -323,18 +334,24 @@ def render_dashboard(
     header_y = _DASHBOARD_VERTICAL_ANCHORS["header"][0]
     account_size = draw_text(image, (14, header_y), account_text, 12, mode, profile=profile)
     draw_text(image, (14 + account_size[0] + 8, header_y), plan_label, 12, mode, profile=profile)
-    draw_text(image, (310, header_y), date_label, 12, mode, profile=profile)
+    if english: right_text(header_y, date_label, 12)
+    else: draw_text(image, (310, header_y), date_label, 12, mode, profile=profile)
     draw.line((10, 28, 389, 28), fill=BLACK, width=1)
 
-    draw_text(image, (10, 40), "每周额度 · 剩余", 14, mode, profile=profile)
+    draw_text(image, (10, 40), "Weekly remaining" if english else "每周额度 · 剩余", 14, mode, profile=profile)
     draw_text(image, (10, 60), f"{remaining}%", 48, mode, profile=profile, weight="bold")
-    draw_text(image, (292, 64), f"已使用 {used}%", 18, mode, profile=profile)
-    draw_text(image, (270, 88), f"下次重置 {reset_label}", 12, mode, profile=profile, weight="regular")
+    if english:
+        right_text(64, f"Used {used}%", 18)
+        right_text(88, f"Resets {reset_label}", 12, weight="regular")
+    else:
+        draw_text(image, (292, 64), f"已使用 {used}%", 18, mode, profile=profile)
+        draw_text(image, (270, 88), f"下次重置 {reset_label}", 12, mode, profile=profile, weight="regular")
     _draw_quota_meter(draw, remaining=remaining, top=108)
 
-    draw_text(image, (10, 128), "30 天用量", 14, mode, profile=profile)
+    draw_text(image, (10, 128), "30-day usage" if english else "30 天用量", 14, mode, profile=profile)
     _draw_usage_chart(draw, data.usage_buckets if data else None)
-    draw_text(image, (304, 128), f"最后更新 {updated_label}", 12, mode, profile=profile, weight="regular")
+    if english: right_text(128, f"Updated {updated_label}", 12, weight="regular")
+    else: draw_text(image, (304, 128), f"最后更新 {updated_label}", 12, mode, profile=profile, weight="regular")
     _draw_dashed_rule(draw, 168)
 
     if data is None:
@@ -355,6 +372,8 @@ def render_dashboard(
             for index, task in enumerate(data.tasks[:3])
         )
     for y, project, conversation, status, state in rows:
+        if english:
+            status = {"运行中": "Running", "等待指令": "Waiting", "排队中": "Queued", "失败": "Failed"}[status]
         draw_text(image, (10, y), _fit_text(project, profile.project_size, 292, profile), profile.project_size, mode, profile=profile)
         draw_text(image, (10, y + 16), _fit_text(conversation, profile.subtitle_size, 292, profile, weight="regular"), profile.subtitle_size, mode, profile=profile, weight="regular")
         badge = (318, y + 4, 389, y + 27)

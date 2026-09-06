@@ -166,7 +166,7 @@ sys.stdin.readline()
     func testHelperArgumentsAreNamedAndPreviewRequiresValidatedSource() throws {
         let options = try CompanionOptions.parse(["--state-dir", "/tmp/isolated state", "--runtime-root", "/tmp/runtime root"])
         let settings = CompanionSettings(codexBinary: "/Applications/Codex.app/Contents/Resources/codex", pythonBinary: "/tmp/python")
-        XCTAssertEqual(options.previewArguments(settings: settings), ["/tmp/runtime root/tools/codex_eink_reliable.py", "--state-dir", "/tmp/isolated state", "--state-file", "/tmp/isolated state/status.json", "preview", "--codex-binary", settings.codexBinary, "--validated"])
+        XCTAssertEqual(options.previewArguments(settings: settings), ["/tmp/runtime root/tools/codex_eink_reliable.py", "--state-dir", "/tmp/isolated state", "--state-file", "/tmp/isolated state/status.json", "preview", "--codex-binary", settings.codexBinary, "--validated", "--language", "zh-CN"])
         XCTAssertEqual(options.setupArguments(action: "install", settings: settings), ["/tmp/runtime root/tools/companion_setup.py", "--state-dir", "/tmp/isolated state", "install", "--python", "/tmp/python", "--runtime-root", "/tmp/runtime root"])
         XCTAssertThrowsError(try CompanionOptions.parse(["--state-dir", "relative"]))
     }

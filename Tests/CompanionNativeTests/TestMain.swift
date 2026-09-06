@@ -29,6 +29,9 @@ func XCTUnwrap<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #lin
 
 @main struct NativeTests {
     @MainActor static func main() async throws {
+        try await LanguageTests().testLanguageSwitchRestartsRendererAndPreservesPause()
+        try LanguageTests().testLegacySettingsAndLanguageRoundTrip()
+        LanguageTests().testTranslationPreservesUserContentAndSupportsErrors()
         try LoginTests().testNoArgumentLaunchRestoresSelectedDirectoryAndSavedState()
         try LoginTests().testFreshInstallAndExplicitDirectoryDoNotChangeStartupSelection()
         try LoginTests().testDamagedSelectionAndMissingTargetBlockRecoveryWithoutOverwrite()
@@ -102,6 +105,6 @@ func XCTUnwrap<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #lin
         await preflight.testReadOnlyInspectorTimeoutIsBoundedWhenDescendantHoldsStdout()
         await preflight.testTransientInspectionFailuresRetryButConflictsRemainBlocked()
         print("PASS fresh setup preflight / busy and stale identity / total deadline")
-        print("PASS 52 native tests (no app launch or Bluetooth)")
+        print("PASS 55 native tests (no app launch or Bluetooth)")
     }
 }

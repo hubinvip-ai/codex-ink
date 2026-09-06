@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import io
 import json
 import sys
@@ -19,18 +20,21 @@ from tools.codex_eink_sync import render_real_snapshot
 
 def main():
     try:
-        if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != '--validated'):
-            return 2
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('binary', type=Path)
+        parser.add_argument('--validated', action='store_true')
+        parser.add_argument('--language', choices=('zh-CN','en'), default='zh-CN')
+        args = parser.parse_args()
         state = json.load(sys.stdin)
-        with CodexAppServerClient(binary=Path(sys.argv[1])) as client:
+        with CodexAppServerClient(binary=args.binary) as client:
             snapshot = client.fetch()
         now = datetime.now().astimezone()
-        if len(sys.argv) == 3:
+        if args.validated:
             from tools.companion_data import validated_snapshot
             from tools.eink_text_renderer import render_dashboard, FINAL_PROFILE
-            image = render_dashboard(profile=FINAL_PROFILE, data=validated_snapshot(snapshot, state, now))
+            image = render_dashboard(profile=FINAL_PROFILE, data=validated_snapshot(snapshot, state, now, language=args.language), language=args.language)
         else:
-            _, image = render_real_snapshot(snapshot, state, now)
+            _, image = render_real_snapshot(snapshot, state, now, language=args.language)
         output = io.BytesIO()
         image.save(output, format='PNG')
         sys.stdout.buffer.write(output.getvalue())

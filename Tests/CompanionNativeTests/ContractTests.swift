@@ -18,7 +18,7 @@ final class ContractTests: NativeTestCase {
         XCTAssertFalse(settings.syncEnabled)
         try store.save(settings)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: store.url)) as? [String: Any])
-        XCTAssertEqual(Set(json.keys), ["version", "codex_binary", "python_binary", "device_identifier", "device_name", "binding_revision", "sync_enabled", "paused"])
+        XCTAssertEqual(Set(json.keys), ["version", "codex_binary", "python_binary", "device_identifier", "device_name", "binding_revision", "sync_enabled", "paused", "language"])
         XCTAssertTrue(json["device_identifier"] is NSNull)
         XCTAssertEqual(try store.load(), settings)
     }

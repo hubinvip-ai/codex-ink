@@ -64,6 +64,7 @@
 </head>
 <body>
   <div class="editor-toolbar" aria-label="编辑工具栏">
+    <label>语言 / Language <select id="language"><option value="zh-CN">简体中文</option><option value="en">English</option></select></label>
     <button type="button" id="toggleEdit">编辑内容</button>
     <button type="button" id="resetEdit">恢复初始</button>
     <button type="button" id="downloadHtml">下载 HTML</button>
@@ -106,6 +107,7 @@
   <script>
     (() => {
       const STORAGE_KEY = 'codex-eink-dashboard-native-v1';
+      let language = 'zh-CN';
       const SEGMENT_COUNT = 50;
       const CELL_PIXELS = 380 - (SEGMENT_COUNT - 1);
       const meter = document.getElementById('balanceProgress');
@@ -156,14 +158,15 @@
           segment.classList.toggle('used', index >= remainingSegments);
         });
         document.querySelector('[data-progress-label="balanceProgress"]').textContent = `${safeValue}%`;
-        document.querySelector('[data-field="used"]').textContent = `已使用 ${100 - safeValue}%`;
-        meter.setAttribute('aria-label', `剩余额度 ${safeValue}%`);
+        document.querySelector('[data-field="used"]').textContent = `${language === "en" ? "Used" : "已使用"} ${100 - safeValue}%`;
+        meter.setAttribute('aria-label', `${language === "en" ? "Remaining" : "剩余额度"} ${safeValue}%`);
         if (persist) saveState();
       }
 
-      function captureState() { return { texts: Object.fromEntries(editableElements.map(element => [element.dataset.field, element.innerHTML])), progress: Number(meter.dataset.progress || 0) }; }
+      function captureState() { return { language, texts: Object.fromEntries(editableElements.map(element => [element.dataset.field, element.innerHTML])), progress: Number(meter.dataset.progress || 0) }; }
       function applyState(state) {
         if (!state) return;
+        language = state.language === "en" ? "en" : "zh-CN";
         editableElements.forEach(element => { if (typeof state.texts?.[element.dataset.field] === 'string') element.innerHTML = state.texts[element.dataset.field]; });
         setProgress(state.progress ?? 61, false);
       }
@@ -171,11 +174,14 @@
       function setEditing(enabled) {
         document.body.classList.toggle('editing', enabled);
         editableElements.forEach(element => { element.contentEditable = enabled ? 'true' : 'false'; });
-        document.getElementById('toggleEdit').textContent = enabled ? '完成编辑' : '编辑内容';
+        document.getElementById('toggleEdit').textContent = language === 'en' ? (enabled ? 'Done' : 'Edit content') : (enabled ? '完成编辑' : '编辑内容');
       }
       function resetState() {
         localStorage.removeItem(STORAGE_KEY);
         editableElements.forEach(element => { element.innerHTML = initialTexts[element.dataset.field]; });
+        const selected = language;
+        language = 'zh-CN';
+        setLanguage(selected, false);
         setProgress(61, false);
         saveState();
       }
@@ -183,6 +189,16 @@
         saveState();
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('.editor-toolbar')?.remove();
+        clone.querySelectorAll('canvas').forEach(canvas => {
+          const image = document.createElement('img');
+          image.src = document.getElementById(canvas.id).toDataURL();
+          image.id = canvas.id; image.width = canvas.width; image.height = canvas.height;
+          image.alt = canvas.getAttribute('aria-label') || '';
+          canvas.replaceWith(image);
+        });
+        clone.querySelectorAll('script').forEach(element => element.remove());
+        clone.querySelector('body').classList.remove('editing');
+        clone.querySelector('body').classList.add('screen-preview');
         clone.querySelectorAll('[contenteditable]').forEach(element => element.setAttribute('contenteditable', 'false'));
         const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], { type: 'text/html;charset=utf-8' });
         const link = document.createElement('a');
@@ -191,6 +207,53 @@
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 1000);
       }
+      function setLanguage(next, persist = true) {
+        const english = next === 'en';
+        const pairs = [
+          ['每周额度 · 剩余', 'Weekly remaining'], ['30 天用量', '30-day usage'],
+          ['已使用 ', 'Used '], ['下次重置 ', 'Resets '], ['最后更新 ', 'Updated '],
+          ['等待指令', 'Waiting'], ['运行中', 'Running'], ['排队中', 'Queued'], ['失败', 'Failed']
+        ];
+        const fields = ['quota-title', 'usage-title', 'used', 'reset', 'updated', 'task-1-status', 'task-2-status', 'task-3-status'];
+        if (next !== language) {
+          for (const field of fields) {
+            const element = document.querySelector(`[data-field="${field}"]`);
+            let value = element.textContent;
+            for (const [zh, en] of pairs) {
+              const source = english ? zh : en, target = english ? en : zh;
+              if (value === source || (source.endsWith(' ') && value.startsWith(source))) {
+                value = target + value.slice(source.length); break;
+              }
+            }
+            element.textContent = value;
+          }
+          const date = document.querySelector('[data-field="date"]');
+          if (date) {
+            const match = date.textContent.match(english ? /^(\d{2})月(\d{2})日 周([一二三四五六日])$/ : /^(\d{2})\/(\d{2}) (Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/);
+            if (match) {
+              const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+              date.textContent = english ? `${match[1]}/${match[2]} ${days['一二三四五六日'.indexOf(match[3])]}` : `${match[1]}月${match[2]}日 周${'一二三四五六日'[days.indexOf(match[3])]}`;
+            }
+          }
+        }
+        language = english ? 'en' : 'zh-CN';
+        document.documentElement.lang = language;
+        document.title = english ? 'Codex Ink · E-Ink Dashboard · 400×300' : 'Codex Ink · Codex 墨水屏看板 · 400×300';
+        document.getElementById('language').value = language;
+        document.getElementById('resetEdit').textContent = english ? 'Reset' : '恢复默认';
+        document.getElementById('downloadHtml').textContent = english ? 'Download HTML' : '下载 HTML';
+        document.querySelector('.toolbar-note').textContent = english ? '400×300 · Native pixels' : '400×300 · 原生像素';
+        document.querySelector('.editor-toolbar').setAttribute('aria-label', english ? 'Editor toolbar' : '编辑工具栏');
+        document.querySelector('[data-section="quota"]').setAttribute('aria-label', english ? 'Quota and reset time' : '额度使用与重置时间');
+        document.querySelector('[data-section="tasks"]').setAttribute('aria-label', english ? 'Current Codex tasks' : '当前 Codex 任务');
+        meter.setAttribute('aria-label', `${english ? 'Remaining' : '剩余额度'} ${meter.dataset.progress}%`);
+        document.getElementById('artboard').setAttribute('aria-label', english ? 'Codex Ink display dashboard' : 'Codex Ink 墨水屏状态看板');
+        document.getElementById('usageChart').setAttribute('aria-label', english ? '30-day usage chart' : '近 30 天用量柱状图');
+        document.querySelector('[data-section="usage"]').setAttribute('aria-label', english ? '30-day usage' : '30 天用量概览');
+        setEditing(document.body.classList.contains('editing'));
+        if (persist) saveState();
+      }
+
       function updateProgressFromPointer(event) {
         if (!document.body.classList.contains('editing')) return;
         const rect = meter.getBoundingClientRect();
@@ -206,6 +269,9 @@
 
       try { applyState(JSON.parse(localStorage.getItem(STORAGE_KEY))); } catch (_) { setProgress(61, false); }
       if (!localStorage.getItem(STORAGE_KEY)) setProgress(61, false);
+      const requestedLanguage = new URLSearchParams(window.location.search).get('language');
+      setLanguage(['en', 'zh-CN'].includes(requestedLanguage) ? requestedLanguage : language, false);
+      document.getElementById('language').addEventListener('change', event => setLanguage(event.target.value));
       setEditing(false);
       drawChart();
     })();

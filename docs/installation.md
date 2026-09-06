@@ -42,7 +42,7 @@ Ad-hoc signing is not Developer ID signing or Apple notarization. Other Macs may
 
 ## 3. Preview and bind
 
-The current UI is in Simplified Chinese.
+Choose Simplified Chinese or English in Overview → 语言 / Language. The choice applies to settings, the menu bar and the display. Existing configurations remain in Chinese.
 
 1. Open settings, choose the actual Codex and Python executables and click **保存路径** (Save paths).
 2. Click **检查数据并生成预览** (Check data and generate preview).

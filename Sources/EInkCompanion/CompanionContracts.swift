@@ -58,10 +58,26 @@ struct CompanionSettings: Codable, Equatable, Sendable {
     var bindingRevision = 0
     var syncEnabled = false
     var paused = false
+    var language: DisplayLanguage = .chinese
     enum CodingKeys: String, CodingKey, CaseIterable {
         case version, codexBinary = "codex_binary", pythonBinary = "python_binary"
         case deviceIdentifier = "device_identifier", deviceName = "device_name"
-        case bindingRevision = "binding_revision", syncEnabled = "sync_enabled", paused
+        case bindingRevision = "binding_revision", syncEnabled = "sync_enabled", paused, language
+    }
+    init(codexBinary: String, pythonBinary: String) {
+        self.codexBinary = codexBinary; self.pythonBinary = pythonBinary
+    }
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decode(Int.self, forKey: .version)
+        codexBinary = try c.decode(String.self, forKey: .codexBinary)
+        pythonBinary = try c.decode(String.self, forKey: .pythonBinary)
+        deviceIdentifier = try c.decodeIfPresent(UUID.self, forKey: .deviceIdentifier)
+        deviceName = try c.decodeIfPresent(String.self, forKey: .deviceName)
+        bindingRevision = try c.decode(Int.self, forKey: .bindingRevision)
+        syncEnabled = try c.decode(Bool.self, forKey: .syncEnabled)
+        paused = try c.decode(Bool.self, forKey: .paused)
+        language = c.contains(.language) ? try c.decode(DisplayLanguage.self, forKey: .language) : .chinese
     }
     func validated() throws -> Self {
         guard version == 1, codexBinary.hasPrefix("/"), pythonBinary.hasPrefix("/"),
@@ -88,6 +104,7 @@ struct CompanionSettings: Codable, Equatable, Sendable {
         try c.encode(bindingRevision, forKey: .bindingRevision)
         try c.encode(syncEnabled, forKey: .syncEnabled)
         try c.encode(paused, forKey: .paused)
+        try c.encode(language, forKey: .language)
     }
 }
 
@@ -100,7 +117,7 @@ struct SettingsStore {
             let bytes = try Data(contentsOf: url)
             let object = try StrictJSON.object(bytes)
             guard bytes.count <= 65_536,
-                  Set(object.keys) == Set(CompanionSettings.CodingKeys.allCases.map(\.rawValue)) else { throw CompanionError.invalidSettings }
+                  Set(object.keys).subtracting(["language"]) == Set(CompanionSettings.CodingKeys.allCases.map(\.rawValue)).subtracting(["language"]) else { throw CompanionError.invalidSettings }
             return try JSONDecoder().decode(CompanionSettings.self, from: bytes).validated()
         } catch { throw CompanionError.settingsDamaged }
     }
@@ -194,11 +211,11 @@ struct CompanionOptions {
     func script(_ name: String) -> String { runtimeRoot.appendingPathComponent("tools/" + name).path }
     func bridgeArguments(settings: CompanionSettings, sessionID: String) -> [String] {
         [script("companion_bridge.py"), "--state-dir", stateDirectory.path, "--state-file", stateFile.path,
-         "--codex-binary", settings.codexBinary, "--session-id", sessionID]
+         "--codex-binary", settings.codexBinary, "--session-id", sessionID, "--language", settings.language.rawValue]
     }
     func previewArguments(settings: CompanionSettings) -> [String] {
         [script("codex_eink_reliable.py"), "--state-dir", stateDirectory.path, "--state-file", stateFile.path,
-         "preview", "--codex-binary", settings.codexBinary, "--validated"]
+         "preview", "--codex-binary", settings.codexBinary, "--validated", "--language", settings.language.rawValue]
     }
     func setupArguments(action: String, settings: CompanionSettings) -> [String] {
         var args = [script("companion_setup.py"), "--state-dir", stateDirectory.path, action]

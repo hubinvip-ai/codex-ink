@@ -230,6 +230,7 @@ def main():
     parser.add_argument('--state-file',type=Path,required=True)
     parser.add_argument('--codex-binary',type=Path,required=True)
     parser.add_argument('--session-id',required=True)
+    parser.add_argument('--language',choices=('zh-CN','en'),default='zh-CN')
     args=parser.parse_args()
     try:
         uuid.UUID(args.session_id)
@@ -237,7 +238,7 @@ def main():
         session=BridgeSession(sys.stdin.buffer,sys.stdout.buffer,args.session_id)
         for sig in (signal.SIGTERM,signal.SIGINT):
             signal.signal(sig,lambda number,frame:session.close())
-        renderer=CodexRenderer(args.codex_binary,validated=True,cancel_event=session.stopping)
+        renderer=CodexRenderer(args.codex_binary,validated=True,cancel_event=session.stopping,language=args.language)
         BridgeWorker(SyncJournal(args.state_dir),args.state_file,renderer,session).run()
         return 0 if session.error_code is None else 1
     except (ValueError,OSError):

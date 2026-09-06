@@ -11,7 +11,7 @@ from tools.codex_status_core import DashboardSnapshot, DisplayTask, DisplayStatu
 from tools.eink_text_renderer import render_dashboard
 
 
-def main():
+def main(language="zh-CN", output=None):
     # Local process only: keep the demonstration date reproducible on another Mac.
     os.environ['TZ'] = 'Asia/Shanghai'
     time.tzset()
@@ -28,10 +28,10 @@ def main():
             DisplayTask('demo-3', '阅读清单', '整理本周笔记', DisplayStatus.QUEUED, stamp),
         ),
     )
-    image = render_dashboard(data=snapshot)
+    image = render_dashboard(data=snapshot, language=language)
     assert image.size == (400, 300)
     assert set(image.getdata()) <= {(0, 0, 0), (255, 255, 255), (198, 40, 40)}
-    output = Path(__file__).with_name('dashboard-demo.png')
+    output = Path(output) if output else Path(__file__).with_name('dashboard-demo.png')
     image.save(output, format='PNG', optimize=False)
     print(f'Rendered fictional demo: {output} (400x300, three colors)')
 

@@ -11,7 +11,7 @@ struct CompanionApp: App {
         } label: {
             HStack(spacing: 4) {
                 Image(nsImage: menuBarIcon).accessibilityHidden(true)
-                Text("Codex Ink · \(model.statusLabel)")
+                Text("Codex Ink · \(model.text(model.statusLabel))")
             }
         }
         .menuBarExtraStyle(.menu)
@@ -48,7 +48,7 @@ final class CompanionAppDelegate: NSObject, NSApplicationDelegate {
     func showSettings() {
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 700), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            window.title = "Codex Ink · 设置"
+            window.title = CompanionModel.shared.text("Codex Ink · 设置")
             window.contentView = NSHostingView(rootView: CompanionSettingsView(model: .shared))
             window.minSize = NSSize(width: 820, height: 620)
             window.isReleasedWhenClosed = false
@@ -65,9 +65,9 @@ final class CompanionAppDelegate: NSObject, NSApplicationDelegate {
             let clean = await CompanionModel.shared.shutdown()
             if !clean {
                 let alert = NSAlert()
-                alert.messageText = "仍未确认蓝牙连接清理"
-                alert.informativeText = "退出会结束本应用的蓝牙所有权。未完成发送不会确认为成功；下次启动需重试。"
-                alert.addButton(withTitle: "退出")
+                alert.messageText = CompanionModel.shared.text("仍未确认蓝牙连接清理")
+                alert.informativeText = CompanionModel.shared.text("退出会结束本应用的蓝牙所有权。未完成发送不会确认为成功；下次启动需重试。")
+                alert.addButton(withTitle: CompanionModel.shared.text("退出"))
                 alert.runModal()
             }
             NSApp.reply(toApplicationShouldTerminate: true)
@@ -78,25 +78,26 @@ final class CompanionAppDelegate: NSObject, NSApplicationDelegate {
 
 struct CompanionMenu: View {
     @ObservedObject var model: CompanionModel
+    private var localizedDeviceLabel: String { model.settings.deviceName.map { $0 + (model.settings.language == .english ? " · Bound" : " · 已绑定") } ?? model.text("尚未绑定屏幕") }
     var showSettings: () -> Void
     var body: some View {
-        Text(model.statusLabel)
-        Text(model.deviceLabel)
-        Text("数据读取：\(formatted(model.lastDataRead))")
-        Text("成功下发：\(formatted(model.lastSent))")
-        if let error = model.errorMessage { Text(error) }
+        Text(model.text(model.statusLabel))
+        Text(localizedDeviceLabel)
+        Text("\(model.settings.language == .english ? "Data read: " : "数据读取：")\(formatted(model.lastDataRead))")
+        Text("\(model.settings.language == .english ? "Last sent: " : "成功下发：")\(formatted(model.lastSent))")
+        if let error = model.errorMessage { Text(model.text(error)) }
         Divider()
-        Button(model.primaryLabel) {
+        Button(model.text(model.primaryLabel)) {
             Task { if await model.performPrimaryAction() != nil { showSettings() } }
         }.disabled(!model.primaryActionEnabled)
-        Button(model.settings.paused ? "继续同步" : "暂停同步") { Task { await model.setPaused(!model.settings.paused) } }
+        Button(model.settings.paused ? model.text("继续同步") : model.text("暂停同步")) { Task { await model.setPaused(!model.settings.paused) } }
             .disabled(!model.settings.syncEnabled || model.busy || model.stopping)
-        Button("查看预览") { showSettings(); Task { await model.preview() } }.disabled(model.busy || model.stopping)
-        Button("设置…", action: showSettings).keyboardShortcut(",")
+        Button(model.text("查看预览")) { showSettings(); Task { await model.preview() } }.disabled(model.busy || model.stopping)
+        Button(model.text("设置…"), action: showSettings).keyboardShortcut(",")
         Divider()
-        Button("退出 Codex Ink") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        Button(model.text("退出 Codex Ink")) { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
-    private func formatted(_ date: Date?) -> String { date?.formatted(date: .abbreviated, time: .standard) ?? "尚无成功记录" }
+    private func formatted(_ date: Date?) -> String { date.map { $0.formatted(.dateTime.locale(model.settings.language.locale)) } ?? model.text("尚无成功记录") }
 }
 
 struct CompanionSettingsView: View {
@@ -106,11 +107,12 @@ struct CompanionSettingsView: View {
     @State private var confirmedAction: String?
     @FocusState private var focusedPath: PathField?
     enum PathField { case codex, python }
+    private var localizedDeviceLabel: String { model.settings.deviceName.map { $0 + (model.settings.language == .english ? " · Bound" : " · 已绑定") } ?? model.text("尚未绑定屏幕") }
 
     var body: some View {
         NavigationSplitView {
             List(SettingsSection.allCases, selection: $model.settingsSection) { section in
-                Label(section.title, systemImage: section.symbol)
+                Label(model.text(section.title), systemImage: section.symbol)
                     .tag(section)
                     .accessibilityIdentifier("companion.section.\(section.rawValue)")
             }
@@ -124,24 +126,29 @@ struct CompanionSettingsView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 820, minHeight: 620)
+        .onChange(of: model.settings.language) { _, _ in
+            for window in NSApp.windows where window.title.hasPrefix("Codex Ink · ") {
+                window.title = model.text("Codex Ink · 设置")
+            }
+        }
         .onAppear {
             codexPath = model.settings.codexBinary
             pythonPath = model.settings.pythonBinary
             model.refreshLoginStatus()
         }
         .confirmationDialog(
-            confirmedAction == "restore" ? "停止伴侣同步并恢复本应用旧配置？" : "备份并接管本应用的 hooks 与旧启动项？",
+            confirmedAction == "restore" ? model.text("停止伴侣同步并恢复本应用旧配置？") : model.text("备份并接管本应用的 hooks 与旧启动项？"),
             isPresented: Binding(get: { confirmedAction != nil }, set: { if !$0 { confirmedAction = nil } }),
             titleVisibility: .visible
         ) {
             let action = confirmedAction ?? "install"
-            Button(action == "restore" ? "停止并恢复" : "确认接管", role: action == "restore" ? .destructive : nil) {
+            Button(action == "restore" ? model.text("停止并恢复") : model.text("确认接管"), role: action == "restore" ? .destructive : nil) {
                 confirmedAction = nil
                 Task { await model.setupAction(action) }
             }
-            Button("取消", role: .cancel) { confirmedAction = nil }
+            Button(model.text("取消"), role: .cancel) { confirmedAction = nil }
         } message: {
-            Text("不会自动退出 Codex、绕过 hooks 信任或覆盖其他应用的 hooks。条件不满足时停止并保留原配置。")
+            Text(model.text("不会自动退出 Codex、绕过 hooks 信任或覆盖其他应用的 hooks。条件不满足时停止并保留原配置。"))
         }
     }
 
@@ -166,7 +173,7 @@ struct CompanionSettingsView: View {
                 }
                 Spacer()
                 Circle().fill(statusColor).frame(width: 8, height: 8)
-                    .accessibilityLabel("当前状态：\(model.statusLabel)")
+                    .accessibilityLabel(model.text("当前状态") + ": " + model.text(model.statusLabel))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -175,7 +182,17 @@ struct CompanionSettingsView: View {
     }
 
     private var overviewPage: some View {
-        page(title: "概览", subtitle: "查看屏幕内容与同步状态") {
+        page(title: model.text("概览"), subtitle: model.text("查看屏幕内容与同步状态")) {
+            Picker("语言 / Language", selection: Binding(
+                get: { model.settings.language },
+                set: { language in Task { await model.setLanguage(language) } }
+            )) {
+                ForEach(DisplayLanguage.allCases) { language in Text(language.title).tag(language) }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: 320, alignment: .leading)
+            .disabled(!model.canMutate)
+            .accessibilityIdentifier("companion.language")
             HStack(alignment: .top, spacing: 22) {
                 previewCard
                 VStack(spacing: 14) {
@@ -196,23 +213,23 @@ struct CompanionSettingsView: View {
                         .interpolation(.none)
                         .resizable()
                         .aspectRatio(4 / 3, contentMode: .fit)
-                        .accessibilityLabel("真实数据生成的 400×300 墨水屏预览，非已下发确认")
+                        .accessibilityLabel(model.text("真实数据生成的 400×300 墨水屏预览，非已下发确认"))
                 } else {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8).fill(.quaternary)
                         VStack(spacing: 8) {
                             Image(systemName: "rectangle.dashed").font(.title)
-                            Text("尚无有效预览").font(.headline)
-                            Text("先到“数据源”检查真实数据").font(.caption).foregroundStyle(.secondary)
+                            Text(model.text("尚无有效预览")).font(.headline)
+                            Text(model.text("先到“数据源”检查真实数据")).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     .aspectRatio(4 / 3, contentMode: .fit)
                 }
-                Text("预览不代表设备已更新；下发成功也不替代实屏确认。")
+                Text(model.text("预览不代表设备已更新；下发成功也不替代实屏确认。"))
                     .font(.caption).foregroundStyle(.secondary)
             }
         } label: {
-            Label("墨水屏预览", systemImage: "rectangle.inset.filled")
+            Label(model.text("墨水屏预览"), systemImage: "rectangle.inset.filled")
         }
         .frame(width: 420)
     }
@@ -220,29 +237,29 @@ struct CompanionSettingsView: View {
     private var statusCard: some View {
         GroupBox {
             VStack(spacing: 0) {
-                statusRow("运行状态", model.statusLabel, color: statusColor)
+                statusRow(model.text("运行状态"), model.text(model.statusLabel), color: statusColor)
                 Divider().padding(.vertical, 10)
-                statusRow("绑定设备", model.deviceLabel)
+                statusRow(model.text("绑定设备"), localizedDeviceLabel)
                 Divider().padding(.vertical, 10)
-                statusRow("最近读取", dateLabel(model.lastDataRead))
+                statusRow(model.text("最近读取"), dateLabel(model.lastDataRead))
                 Divider().padding(.vertical, 10)
-                statusRow("最近下发", dateLabel(model.lastSent))
+                statusRow(model.text("最近下发"), dateLabel(model.lastSent))
             }
             .frame(maxWidth: .infinity)
         } label: {
-            Label("当前状态", systemImage: "waveform.path.ecg")
+            Label(model.text("当前状态"), systemImage: "waveform.path.ecg")
         }
     }
 
     private var primaryActions: some View {
         VStack(spacing: 10) {
-            Button(model.primaryLabel) { performPrimaryAction() }
+            Button(model.text(model.primaryLabel)) { performPrimaryAction() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
                 .disabled(!model.primaryActionEnabled)
             if model.settings.syncEnabled {
-                Button(model.settings.paused ? "继续同步" : "暂停同步") {
+                Button(model.settings.paused ? model.text("继续同步") : model.text("暂停同步")) {
                     Task { await model.setPaused(!model.settings.paused) }
                 }
                 .controlSize(.large)
@@ -253,54 +270,54 @@ struct CompanionSettingsView: View {
     }
 
     private var sourcePage: some View {
-        page(title: "数据源", subtitle: "连接 Codex 并验证真实数据") {
+        page(title: model.text("数据源"), subtitle: model.text("连接 Codex 并验证真实数据")) {
             GroupBox {
                 VStack(alignment: .leading, spacing: 14) {
-                    pathRow("Codex 可执行文件", value: $codexPath, field: .codex)
-                    pathRow("Python 可执行文件", value: $pythonPath, field: .python)
+                    pathRow(model.text("Codex 可执行文件"), value: $codexPath, field: .codex)
+                    pathRow(model.text("Python 可执行文件"), value: $pythonPath, field: .python)
                     HStack {
-                        Button("保存路径") {
+                        Button(model.text("保存路径")) {
                             Task { await model.savePaths(codex: codexPath, python: pythonPath) }
                         }
                         .disabled(!model.canMutate)
-                        Button("检查数据并生成预览") { Task { await model.preview() } }
+                        Button(model.text("检查数据并生成预览")) { Task { await model.preview() } }
                             .buttonStyle(.borderedProminent)
                             .disabled(!model.canMutate)
                             .accessibilityIdentifier("companion.preview")
                     }
                     Divider()
-                    Label(model.sourceStatus, systemImage: model.lastDataRead == nil ? "circle.dashed" : "checkmark.circle.fill")
+                    Label(model.text(model.sourceStatus), systemImage: model.lastDataRead == nil ? "circle.dashed" : "checkmark.circle.fill")
                         .foregroundStyle(model.lastDataRead == nil ? Color.secondary : Color.green)
-                    Text("只读取 Codex 现有登录状态，不保存密码，不调用模型。首次配置只生成预览，不发送画面。")
+                    Text(model.text("只读取 Codex 现有登录状态，不保存密码，不调用模型。首次配置只生成预览，不发送画面。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } label: {
-                Label("本地运行环境", systemImage: "terminal")
+                Label(model.text("本地运行环境"), systemImage: "terminal")
             }
         }
     }
 
     private var displayPage: some View {
-        page(title: "墨水屏", subtitle: "扫描并绑定唯一的发送目标") {
+        page(title: model.text("墨水屏"), subtitle: model.text("扫描并绑定唯一的发送目标")) {
             GroupBox {
                 VStack(alignment: .leading, spacing: 14) {
-                    LabeledContent("当前设备", value: model.deviceLabel)
+                    LabeledContent(model.text("当前设备"), value: localizedDeviceLabel)
                     if let identifier = model.settings.deviceIdentifier {
-                        LabeledContent("本机标识") {
+                        LabeledContent(model.text("本机标识")) {
                             Text(identifier.uuidString).font(.caption.monospaced()).textSelection(.enabled)
                         }
                     }
                     Divider()
                     HStack {
-                        Button("扫描设备") { Task { await model.scan() } }
+                        Button(model.text("扫描设备")) { Task { await model.scan() } }
                             .buttonStyle(.borderedProminent)
                             .disabled(!model.canMutate || !model.ble.isQuiescent)
                             .accessibilityIdentifier("companion.scan")
                         if !model.ble.isQuiescent {
-                            Button("停止蓝牙操作") { model.ble.cancel() }
+                            Button(model.text("停止蓝牙操作")) { model.ble.cancel() }
                         }
                     }
-                    Text(model.ble.detail).foregroundStyle(.secondary)
+                    Text(model.text(model.ble.detail)).foregroundStyle(.secondary)
                     if model.ble.canSelect {
                         Divider()
                         ForEach(model.ble.candidates) { candidate in
@@ -310,92 +327,92 @@ struct CompanionSettingsView: View {
                                     Text(candidate.id.uuidString).font(.caption.monospaced()).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button("验证并绑定") { model.bind(candidate) }
+                                Button(model.text("验证并绑定")) { model.bind(candidate) }
                                     .disabled(!model.canMutate)
-                                    .accessibilityLabel("验证并绑定 \(candidate.name)，\(candidate.id.uuidString)")
+                                    .accessibilityLabel(model.text("验证并绑定") + " " + candidate.name + ", " + candidate.id.uuidString)
                             }
                         }
                     }
-                    Text("名称只供辨认。连接后会验证服务、写入特征及包长，确认断开后才保存本机 UUID。扫描或重绑会关闭自动同步。")
+                    Text(model.text("名称只供辨认。连接后会验证服务、写入特征及包长，确认断开后才保存本机 UUID。扫描或重绑会关闭自动同步。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } label: {
-                Label("设备绑定", systemImage: "display")
+                Label(model.text("设备绑定"), systemImage: "display")
             }
         }
     }
 
     private var syncPage: some View {
-        page(title: "自动同步", subtitle: "管理 Hooks、发送状态和登录启动") {
+        page(title: model.text("自动同步"), subtitle: model.text("管理 Hooks、发送状态和登录启动")) {
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
-                    LabeledContent("安装检查", value: setupLabel)
-                    Text(model.setup?.legacySummary ?? "旧方案检查尚未完成")
+                    LabeledContent(model.text("安装检查"), value: setupLabel)
+                    Text(model.text(model.setup?.legacySummary ?? "旧方案检查尚未完成"))
                         .foregroundStyle(.secondary)
                     if let setup = model.setup {
                         ForEach(setup.blockers, id: \.self) {
-                            Label(SetupBlocker.explanation($0), systemImage: "exclamationmark.triangle.fill")
+                            Label(model.text(SetupBlocker.explanation($0)), systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.orange).textSelection(.enabled)
                         }
                     }
                     HStack {
-                        Button("检查接管状态") { Task { await model.inspectSetup() } }
+                        Button(model.text("检查接管状态")) { Task { await model.inspectSetup() } }
                             .disabled(!model.canMutate)
-                        Button("安装 / 接管…") { confirmedAction = "install" }
+                        Button(model.text("安装 / 接管…")) { confirmedAction = "install" }
                             .buttonStyle(.borderedProminent)
                             .disabled(!model.canMutate)
                     }
-                    Text("接管会备份并替换本应用已识别的 Hooks，保留其他 Hooks。请自行退出旧 Codex 会话；应用不会替你关闭 Codex。")
+                    Text(model.text("接管会备份并替换本应用已识别的 Hooks，保留其他 Hooks。请自行退出旧 Codex 会话；应用不会替你关闭 Codex。"))
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("接管后重新打开 Codex，审阅并信任新 Hooks。只有真实检查为 ready 才能启用同步。")
+                    Text(model.text("接管后重新打开 Codex，审阅并信任新 Hooks。只有真实检查为 ready 才能启用同步。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } label: {
-                Label("Hooks 与接管", systemImage: "point.3.connected.trianglepath.dotted")
+                Label(model.text("Hooks 与接管"), systemImage: "point.3.connected.trianglepath.dotted")
             }
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
                     if !model.settings.syncEnabled {
-                        Button("启用同步") { Task { await model.enableSync() } }
+                        Button(model.text("启用同步")) { Task { await model.enableSync() } }
                             .buttonStyle(.borderedProminent)
                             .disabled(!model.mayEnable || model.lastDataRead == nil)
                             .accessibilityIdentifier("companion.enable")
                     } else {
                         HStack {
-                            Button(model.settings.paused ? "继续同步" : "暂停同步") {
+                            Button(model.settings.paused ? model.text("继续同步") : model.text("暂停同步")) {
                                 Task { await model.setPaused(!model.settings.paused) }
                             }
                             .disabled(!model.canMutate)
-                            Button("立即刷新") { Task { await model.refresh() } }
+                            Button(model.text("立即刷新")) { Task { await model.refresh() } }
                                 .buttonStyle(.borderedProminent)
                                 .disabled(!model.gate.mayRun)
                         }
                     }
-                    Toggle("登录时打开", isOn: Binding(
+                    Toggle(model.text("登录时打开"), isOn: Binding(
                         get: { model.loginState == .enabled || model.loginState == .requiresApproval },
                         set: { enabled in Task { await model.setLoginEnabled(enabled) } }
                     ))
                     .disabled(!model.canMutate)
                     .accessibilityIdentifier("companion.login")
-                    LabeledContent("系统登录项", value: model.loginState.label)
-                    Button("打开系统登录项设置") { model.openLoginSettings() }
-                    Text("系统中关闭后不会自动重新注册。登录恢复会沿用当前有效配置目录。")
+                    LabeledContent(model.text("系统登录项"), value: model.text(model.loginState.label))
+                    Button(model.text("打开系统登录项设置")) { model.openLoginSettings() }
+                    Text(model.text("系统中关闭后不会自动重新注册。登录恢复会沿用当前有效配置目录。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } label: {
-                Label("同步与启动", systemImage: "arrow.triangle.2.circlepath")
+                Label(model.text("同步与启动"), systemImage: "arrow.triangle.2.circlepath")
             }
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 10) {
-                    Button("恢复旧配置…", role: .destructive) { confirmedAction = "restore" }
+                    Button(model.text("恢复旧配置…"), role: .destructive) { confirmedAction = "restore" }
                         .disabled(!model.canMutate)
-                    Text("仅在需要退出当前接管方案时使用。恢复仍会检查冲突并保留其他 Hooks。")
+                    Text(model.text("仅在需要退出当前接管方案时使用。恢复仍会检查冲突并保留其他 Hooks。"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } label: {
-                Label("维护与恢复", systemImage: "wrench.and.screwdriver")
+                Label(model.text("维护与恢复"), systemImage: "wrench.and.screwdriver")
             }
         }
     }
@@ -408,13 +425,13 @@ struct CompanionSettingsView: View {
                     Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(model.statusLabel)
+                Text(model.text(model.statusLabel))
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .background(statusColor.opacity(0.14), in: Capsule())
                     .foregroundStyle(statusColor)
                     .accessibilityIdentifier("companion.status")
-                if model.busy { ProgressView().controlSize(.small).accessibilityLabel("正在执行本地操作") }
+                if model.busy { ProgressView().controlSize(.small).accessibilityLabel(model.text("正在执行本地操作")) }
             }
             .padding(.horizontal, 24).padding(.vertical, 17)
             Divider()
@@ -430,12 +447,12 @@ struct CompanionSettingsView: View {
     private func errorBanner(_ error: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
-            Text(error).font(.callout).textSelection(.enabled)
+            Text(model.text(error)).font(.callout).textSelection(.enabled)
                 .accessibilityIdentifier("companion.error")
             Spacer()
-            Button("重新检查") { Task { await model.retry() } }.disabled(!model.canMutate)
+            Button(model.text("重新检查")) { Task { await model.retry() } }.disabled(!model.canMutate)
             if let options = model.options {
-                Button("查看状态目录") { NSWorkspace.shared.open(options.stateDirectory) }
+                Button(model.text("查看状态目录")) { NSWorkspace.shared.open(options.stateDirectory) }
             }
         }
         .padding(.horizontal, 24).padding(.vertical, 10)
@@ -451,20 +468,20 @@ struct CompanionSettingsView: View {
                     .textFieldStyle(.roundedBorder)
                     .accessibilityLabel(title)
                     .disabled(!model.canMutate)
-                Button("选择…") {
+                Button(model.text("选择…")) {
                     let panel = NSOpenPanel()
                     panel.canChooseDirectories = false
                     panel.canChooseFiles = true
                     panel.allowsMultipleSelection = false
                     panel.treatsFilePackagesAsDirectories = true
-                    panel.title = "选择\(title)"
+                    panel.title = (model.settings.language == .english ? "Choose " : "选择") + title
                     if panel.runModal() == .OK, let url = panel.url {
                         value.wrappedValue = url.path
                         focusedPath = field
                     }
                 }
                 .disabled(!model.canMutate)
-                .accessibilityLabel("选择\(title)")
+                .accessibilityLabel((model.settings.language == .english ? "Choose " : "选择") + title)
             }
         }
     }
@@ -483,12 +500,12 @@ struct CompanionSettingsView: View {
 
     private var setupLabel: String {
         switch model.setup?.stage {
-        case "ready": return "已验证，可启用"
-        case "needs_install": return "尚未安装"
-        case "legacy_active": return "旧方案仍在运行"
-        case "awaiting_trust": return "等待 Codex 信任与新事件"
-        case "blocked": return "需要处理"
-        default: return "尚未确认"
+        case "ready": return model.text("已验证，可启用")
+        case "needs_install": return model.text("尚未安装")
+        case "legacy_active": return model.text("旧方案仍在运行")
+        case "awaiting_trust": return model.text("等待 Codex 信任与新事件")
+        case "blocked": return model.text("需要处理")
+        default: return model.text("尚未确认")
         }
     }
 
@@ -504,10 +521,10 @@ struct CompanionSettingsView: View {
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return "版本 \(version ?? "开发版")"
+        return (model.settings.language == .english ? "Version " : "版本 ") + (version ?? model.text("开发版"))
     }
 
     private func dateLabel(_ date: Date?) -> String {
-        date?.formatted(date: .abbreviated, time: .shortened) ?? "尚无记录"
+        date.map { $0.formatted(.dateTime.locale(model.settings.language.locale)) } ?? model.text("尚无记录")
     }
 }

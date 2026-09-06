@@ -1,0 +1,8 @@
+{
+  "version": "public-v1.3",
+  "physical_display_verified": false,
+  "files": {
+    "native-en.png": "def301322a9ea89836570a9e449a7d94388acc4095303a6e6839cebdaa03687f",
+    "native-zh-CN.png": "2a95dd2ce13ad6fc29d3b0adc0c565b02b8302fc050e2b6e1bbef84cb758cdad"
+  }
+}

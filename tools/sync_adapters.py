@@ -56,8 +56,11 @@ def run_bounded(command, *, timeout, content=None, pass_fds=(), cancel_event=Non
 
 
 class CodexRenderer:
-    def __init__(self, binary: Path, *, validated=False, cancel_event=None):
+    def __init__(self, binary: Path, *, validated=False, cancel_event=None, language="zh-CN"):
         self.binary = Path(binary).expanduser().resolve()
+        if language not in ("zh-CN", "en"):
+            raise ValueError("unsupported display language")
+        self.language=language
         self.validated=validated
         self.cancel_event=cancel_event
 
@@ -67,6 +70,7 @@ class CodexRenderer:
         try:
             command=[sys.executable, str(ROOT / 'tools/codex_frame_source.py'), str(self.binary)]
             if self.validated: command.append('--validated')
+            command += ['--language', self.language]
             result = run_bounded(command,timeout=105,content=json.dumps(state).encode(),cancel_event=self.cancel_event)
         except InterruptedError as error:
             raise SyncDeferred() from error
