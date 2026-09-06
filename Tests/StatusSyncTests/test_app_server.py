@@ -48,14 +48,19 @@ class JsonlRpcConnectionTests(unittest.TestCase):
     def test_real_pipe_partial_line_times_out_without_waiting_for_newline(self):
         connection, writer = self.pipe_connection(.05)
         os.write(writer, b'{"id":1,')
-        # Prevent the old blocking readline from hanging the test indefinitely.
-        delayed = threading.Timer(.3, lambda: os.write(writer, b'"result":{}}\n'))
+        # Rescue a regressed blocking readline, but assert event ordering rather
+        # than a sub-200ms wall-clock budget on a shared CI runner.
+        newline_sent = threading.Event()
+        def rescue():
+            newline_sent.set()
+            os.write(writer, b'"result":{}}\n')
+        delayed = threading.Timer(2, rescue)
         delayed.start()
-        started = time.monotonic()
         try:
             with self.assertRaises(TimeoutError): connection.request('test', {}, request_id=1)
-            self.assertLess(time.monotonic() - started, .2)
+            self.assertFalse(newline_sent.is_set(), 'timeout waited for a newline')
         finally:
+            delayed.cancel()
             delayed.join()
 
     def test_real_pipe_eof_differs_from_timeout_and_rejects_partial_line(self):
