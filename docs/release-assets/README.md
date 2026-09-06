@@ -5,3 +5,11 @@
 The historical `public-v1.3` baseline remains unchanged. The Chinese README image retains the original Chinese demo data. Both use the native 400×300 three-color renderer.
 
 2026-09-07: replaced the mixed-language README example with fully English demo content.
+
+## English desktop hero
+
+`desktop-hero-en-v1.png` is the English README hero, created with built-in imagegen from `desktop-hero-v1.png` and `dashboard-demo-en.png`. The Chinese hero is preserved. The English screen is an edited presentation of fictional data, not evidence of a physical English-language device refresh.
+
+Prompt: replace only the e-ink screen content in the existing desk photo with the supplied fully English dashboard. Preserve the desk, Mac mini, silver stand, white device enclosure, perspective, lighting and shadows. Match the matte gray e-paper appearance and the exact English labels and task names of `dashboard-demo-en.png`. No Chinese characters on the screen, no new objects or captions, and no UI redesign.
+
+2026-09-07: added the English desktop photo version and used it at the top of the English README.

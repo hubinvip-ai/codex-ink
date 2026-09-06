@@ -6,9 +6,9 @@ Keep your Codex usage and task status on a small display beside your Mac. Codex 
 
 [简体中文](README.zh-CN.md) · [Build & setup](docs/installation.md) · [Privacy](docs/PRIVACY.md)
 
-![Codex Ink running on a desktop e-ink display beside a Mac](docs/release-assets/desktop-hero-v1.png)
+![Codex Ink running on a desktop e-ink display beside a Mac](docs/release-assets/desktop-hero-en-v1.png)
 
-*Edited from a real desk photograph for privacy and composition. The screen uses fictional demo data. The interface supports Simplified Chinese and English.*
+*AI-edited from a real desk photograph. The screen shows a composited English interface with fictional demo data; this is a presentation image, not physical-display verification. The interface supports Simplified Chinese and English.*
 
 ## Development preview
 
