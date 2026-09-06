@@ -21,7 +21,16 @@ class ProcessInspectionTests(unittest.TestCase):
                 if state.startswith('Z'): break
                 time.sleep(.025)
             self.assertTrue(state.startswith('Z'))
-            rows = MacSystem().processes()
+            adapter = MacSystem()
+            real_run = adapter.run
+            def owned_process_listing(argv):
+                # Exercise the real zombie/sysctl path without inspecting unrelated
+                # hosted-runner services whose process arguments may be protected.
+                if argv == ['/bin/ps', '-axo', 'pid=,uid=']:
+                    return real_run(['/bin/ps', '-p', str(child), '-o', 'pid=,uid='])
+                return real_run(argv)
+            with patch.object(adapter, 'run', side_effect=owned_process_listing):
+                rows = adapter.processes()
             self.assertNotIn(child, [r['pid'] for r in rows])
         finally:
             os.waitpid(child, 0)
