@@ -23,9 +23,11 @@
 - **最多三个任务**：项目名、任务标题和生命周期状态。
 - **账号与套餐**：当前账号标识及数据源返回的套餐类型。
 
-![使用虚构数据生成的原生 400 × 300 看板](docs/release-assets/dashboard-demo.png)
+| 简体中文 | English |
+| --- | --- |
+| ![中文墨水屏界面](docs/ui-baseline/public-v1.3/native-zh-CN.png) | ![英文墨水屏界面](docs/ui-baseline/public-v1.3/native-en.png) |
 
-*正式渲染器按设备原生 400 × 300 分辨率生成。*
+*两张图均使用虚构演示数据，由原生渲染器按 400 × 300 分辨率生成。在概览 → 语言 / Language 切换语言，设置、菜单栏和墨水屏会使用保存的选择。*
 
 ## 使用方式
 
@@ -100,5 +102,3 @@ Codex Ink 是独立项目，与 OpenAI 无隶属关系，也未获得其背书�
 ## 界面语言
 
 在 **概览 → 语言 / Language** 选择简体中文或 English，设置、菜单栏、预览和墨水屏使用保存的语言。旧配置保持中文，项目、任务及设备名称保留原文。
-
-![英文墨水屏虚构数据样例](docs/ui-baseline/public-v1.3/native-en.png)

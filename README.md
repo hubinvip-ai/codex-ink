@@ -23,9 +23,11 @@ Project code is licensed under [GPL-3.0-only](LICENSE). Fonts and other third-pa
 - **Up to three tasks:** project names, task titles and lifecycle status.
 - **Account and plan:** the current account label and the reported plan type.
 
-![Native 400 by 300 dashboard rendered with fictional demo data](docs/release-assets/dashboard-demo.png)
+| English | 简体中文 |
+| --- | --- |
+| ![English e-ink dashboard](docs/ui-baseline/public-v1.3/native-en.png) | ![Simplified Chinese e-ink dashboard](docs/ui-baseline/public-v1.3/native-zh-CN.png) |
 
-*Native renderer output at the device's exact 400 × 300 resolution.*
+*Both views use fictional demo data and the native 400 × 300 renderer. Choose the language in Overview → 语言 / Language; settings, the menu bar and the display follow the saved choice.*
 
 ## How it works
 
@@ -100,5 +102,3 @@ Codex Ink is an independent project and is not affiliated with or endorsed by Op
 ## Interface language
 
 Choose Simplified Chinese or English in **Overview → 语言 / Language**. Settings, the menu bar, previews and display frames follow the saved choice. Existing configurations remain in Chinese. Project, task and device names keep their original text.
-
-![English native dashboard with fictional data](docs/ui-baseline/public-v1.3/native-en.png)
