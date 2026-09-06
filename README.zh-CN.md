@@ -25,7 +25,7 @@
 
 | 简体中文 | English |
 | --- | --- |
-| ![中文墨水屏界面](docs/ui-baseline/public-v1.3/native-zh-CN.png) | ![英文墨水屏界面](docs/ui-baseline/public-v1.3/native-en.png) |
+| ![中文墨水屏界面](docs/ui-baseline/public-v1.3/native-zh-CN.png) | ![英文墨水屏界面](docs/release-assets/dashboard-demo-en.png) |
 
 *两张图均使用虚构演示数据，由原生渲染器按 400 × 300 分辨率生成。在概览 → 语言 / Language 切换语言，设置、菜单栏和墨水屏会使用保存的选择。*
 

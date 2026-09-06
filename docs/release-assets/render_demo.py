@@ -23,9 +23,9 @@ def main(language="zh-CN", output=None):
         lifetime_tokens=0, updated_at_epoch=stamp,
         account_label='demo@example.com', plan_label='Pro',
         tasks=(
-            DisplayTask('demo-1', 'Codex Ink', '整理发布材料', DisplayStatus.WAITING, stamp),
-            DisplayTask('demo-2', '个人网站', '更新作品页面', DisplayStatus.RUNNING, stamp),
-            DisplayTask('demo-3', '阅读清单', '整理本周笔记', DisplayStatus.QUEUED, stamp),
+            DisplayTask('demo-1', 'Codex Ink', 'Prepare release' if language == 'en' else '整理发布材料', DisplayStatus.WAITING, stamp),
+            DisplayTask('demo-2', 'Portfolio' if language == 'en' else '个人网站', 'Update project page' if language == 'en' else '更新作品页面', DisplayStatus.RUNNING, stamp),
+            DisplayTask('demo-3', 'Reading list' if language == 'en' else '阅读清单', 'Organize weekly notes' if language == 'en' else '整理本周笔记', DisplayStatus.QUEUED, stamp),
         ),
     )
     image = render_dashboard(data=snapshot, language=language)

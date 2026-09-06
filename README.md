@@ -25,7 +25,7 @@ Project code is licensed under [GPL-3.0-only](LICENSE). Fonts and other third-pa
 
 | English | 简体中文 |
 | --- | --- |
-| ![English e-ink dashboard](docs/ui-baseline/public-v1.3/native-en.png) | ![Simplified Chinese e-ink dashboard](docs/ui-baseline/public-v1.3/native-zh-CN.png) |
+| ![English e-ink dashboard](docs/release-assets/dashboard-demo-en.png) | ![Simplified Chinese e-ink dashboard](docs/ui-baseline/public-v1.3/native-zh-CN.png) |
 
 *Both views use fictional demo data and the native 400 × 300 renderer. Choose the language in Overview → 语言 / Language; settings, the menu bar and the display follow the saved choice.*
 
