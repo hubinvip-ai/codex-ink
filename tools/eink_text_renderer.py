@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Tuple
@@ -245,19 +245,21 @@ def usage_bar_heights(values: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(1 if value <= 0 else max(4, round(value / maximum * 16)) for value in values)
 
 
-def _draw_usage_chart(draw: ImageDraw.ImageDraw, values: tuple[int, ...] | None = None) -> None:
-    values = values or (2,2,3,1,2,2,1,2,8,3,2,4,6,7,5,9,6,3,2,4,5,2,1,7,9,6,4,3,4,4,3,2,6,1,2,3,2,4,5,3,1,5,3,2,6,6)
-    if len(values) < 46:
-        values = (0,) * (46 - len(values)) + tuple(values)
-    elif len(values) > 46:
-        values = tuple(values[-46:])
+def _draw_usage_chart(draw: ImageDraw.ImageDraw, values: tuple[int, ...] | None = None, *, end_date: date | None = None) -> None:
+    # The demo date matches the fixed header; real frames pass their local date.
+    end_date = end_date or date(2026, 9, 1)
+    values = tuple(values) if values is not None else (2,2,3,1,2,2,1,2,8,3,2,4,6,7,5,9,6,3,2,4,5,2,1,7,9,6,4,3,4,4)
+    values = ((0,) * max(0, 30 - len(values)) + values)[-30:]
+    start = end_date - timedelta(days=29)
+    mondays = {i for i in range(1, 30) if (start + timedelta(days=i)).weekday() == 0}
+    ink_width = 380 - 29 * 2 - len(mondays) * 4
+    extra = 0
     for index, height in enumerate(usage_bar_heights(values)):
-        color = THIRD if index == 32 else BLACK
-        slot_left = 10 + (index * 380) // len(values)
-        slot_right = 10 + ((index + 1) * 380) // len(values)
-        bar_width = max(2, min(4, slot_right - slot_left - 3))
-        left = slot_left + 1
-        draw.rectangle((left, 164 - height, left + bar_width - 1, 163), fill=color)
+        if index in mondays:
+            extra += 4
+        left = 10 + index * ink_width // 30 + index * 2 + extra
+        right = 10 + (index + 1) * ink_width // 30 + index * 2 + extra
+        draw.rectangle((left, 164 - height, right - 1, 163), fill=THIRD if index == 21 else BLACK)
 
 
 def _draw_dashed_rule(draw: ImageDraw.ImageDraw, y: int) -> None:
@@ -349,7 +351,8 @@ def render_dashboard(
     _draw_quota_meter(draw, remaining=remaining, top=108)
 
     draw_text(image, (10, 128), "30-day usage" if english else "30 天用量", 14, mode, profile=profile)
-    _draw_usage_chart(draw, data.usage_buckets if data else None)
+    _draw_usage_chart(draw, data.usage_buckets if data else None,
+                      end_date=datetime.fromtimestamp(data.updated_at_epoch).astimezone().date() if data and data.updated_at_epoch else None)
     if english: right_text(128, f"Updated {updated_label}", 12, weight="regular")
     else: draw_text(image, (304, 128), f"最后更新 {updated_label}", 12, mode, profile=profile, weight="regular")
     _draw_dashed_rule(draw, 168)

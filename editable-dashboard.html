@@ -136,16 +136,26 @@
       function drawChart() {
         const canvas = document.getElementById('usageChart');
         const ctx = canvas.getContext('2d', { alpha: false });
-        const values = [2,2,3,1,2,2,1,2,8,3,2,4,6,7,5,9,6,3,2,4,5,2,1,7,9,6,4,3,4,4,3,2,6,1,2,3,2,4,5,3,1,5,3,2,6,6];
+        const values = [2,2,3,1,2,2,1,2,8,3,2,4,6,7,5,9,6,3,2,4,5,2,1,7,9,6,4,3,4,4];
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 380, 16);
+        // Fixed demo window ends on the same Tuesday as the demo header.
+        const endDate = new Date(2026, 8, 1);
+        const mondays = new Set();
+        for (let i = 1; i < 30; i++) {
+          const day = new Date(endDate);
+          day.setDate(day.getDate() - 29 + i);
+          if (day.getDay() === 1) mondays.add(i);
+        }
+        const inkWidth = 380 - 29 * 2 - mondays.size * 4;
+        let extra = 0;
         values.forEach((value, index) => {
           const height = value <= 0 ? 1 : Math.max(4, Math.round(value / 9 * 16));
-          const slotLeft = Math.floor(index * 380 / values.length);
-          const slotRight = Math.floor((index + 1) * 380 / values.length);
-          const barWidth = Math.max(2, Math.min(4, slotRight - slotLeft - 3));
-          ctx.fillStyle = index === 32 ? '#c62828' : '#000000';
-          ctx.fillRect(slotLeft + 1, 16 - height, barWidth, height);
+          if (mondays.has(index)) extra += 4;
+          const left = Math.floor(index * inkWidth / 30) + index * 2 + extra;
+          const right = Math.floor((index + 1) * inkWidth / 30) + index * 2 + extra;
+          ctx.fillStyle = index === 21 ? '#c62828' : '#000000';
+          ctx.fillRect(left, 16 - height, right - left, height);
         });
       }
 

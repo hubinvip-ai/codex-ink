@@ -1,4 +1,4 @@
-"""Render fictional publication data with the unchanged native UI profile; no I/O to Codex/BLE."""
+"""Render fictional publication data with the native UI profile; no I/O to Codex/BLE."""
 from pathlib import Path
 from datetime import datetime
 import os
@@ -19,7 +19,7 @@ def main(language="zh-CN", output=None):
     snapshot = DashboardSnapshot(
         remaining_percent=61, used_percent=39,
         reset_at_epoch=int(datetime.fromisoformat('2026-09-07T15:00:00+08:00').timestamp()),
-        usage_buckets=tuple([0] * 16 + [2, 3, 1, 5, 8, 4, 7, 6, 3, 9, 5, 7, 4, 8, 6, 3, 5, 7, 9, 6, 4, 8, 10, 5, 7, 6, 4, 9, 8, 6]),
+        usage_buckets=tuple([2, 3, 1, 5, 8, 4, 7, 6, 3, 9, 5, 7, 4, 8, 6, 3, 5, 7, 9, 6, 4, 8, 10, 5, 7, 6, 4, 9, 8, 6]),
         lifetime_tokens=0, updated_at_epoch=stamp,
         account_label='demo@example.com', plan_label='Pro',
         tasks=(

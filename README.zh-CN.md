@@ -25,7 +25,7 @@
 
 | 简体中文 | English |
 | --- | --- |
-| ![中文墨水屏界面](docs/ui-baseline/public-v1.3/native-zh-CN.png) | ![英文墨水屏界面](docs/release-assets/dashboard-demo-en.png) |
+| ![中文墨水屏界面](docs/ui-baseline/public-v1.4/native-zh-CN.png) | ![英文墨水屏界面](docs/ui-baseline/public-v1.4/native-en.png) |
 
 *两张图均使用虚构演示数据，由原生渲染器按 400 × 300 分辨率生成。在概览 → 语言 / Language 切换语言，设置、菜单栏和墨水屏会使用保存的选择。*
 
@@ -75,9 +75,9 @@ Mac 菜单栏应用负责预览、设备绑定、暂停/继续、登录启动和
 
 ## 已验证与待验证
 
-公开源码通过 **280 个 Python 测试用例**（其中原生驱动包含 **63 项 Swift 检查**）及 2 组 Swift 核心测试。Release 构建、应用打包与严格开发签名校验通过；在线构建结果见 [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions)。本机还单独检查了配置恢复、hooks 迁移和自动刷新；这些与无硬件测试分别记录。
+公开源码通过 **282 个 Python 测试用例**（其中原生驱动包含 **63 项 Swift 检查**）及 2 组 Swift 核心测试。Release 构建、应用打包与严格开发签名校验通过；在线构建结果见 [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions)。本机还单独检查了配置恢复、hooks 迁移和自动刷新；这些与无硬件测试分别记录。
 
-这不代表实屏外观、真实注销/登录、24 小时稳定性或其他 Mac 已验收。详见[发布说明](docs/releases/v0.4.0.md)。测试数字来自已记录的本机验证，不是在线 CI 状态。
+这不代表实屏外观、真实注销/登录、24 小时稳定性或其他 Mac 已验收。详见[发布说明](docs/releases/v0.4.1.md)。测试数字来自已记录的本机验证，不是在线 CI 状态。
 
 ## 致谢
 

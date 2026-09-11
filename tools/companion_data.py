@@ -44,7 +44,7 @@ def validated_snapshot(app, hook_state, now, *, language="zh-CN"):
     if not isinstance(history, list):
         raise DataUnavailable('usage_unavailable')
     start = now.date() - timedelta(days=29)
-    slots = [0] * 46
+    slots = [0] * 30
     seen = set()
     for bucket in history:
         if not isinstance(bucket, dict) or not isinstance(bucket.get('startDate'), str):
@@ -59,7 +59,7 @@ def validated_snapshot(app, hook_state, now, *, language="zh-CN"):
         seen.add(day)
         offset = (day - start).days
         if 0 <= offset < 30:
-            slots[offset * 45 // 29] = tokens
+            slots[offset] = tokens
     threads=[]
     for thread in app.threads:
         if not isinstance(thread,dict):raise DataUnavailable('tasks_invalid')

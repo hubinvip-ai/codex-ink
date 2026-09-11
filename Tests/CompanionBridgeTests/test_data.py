@@ -34,7 +34,7 @@ class DataTests(unittest.TestCase):
         self.assertEqual(data.used_percent, 39)
         self.assertEqual(data.plan_label, 'Pro')
         self.assertEqual(sum(data.usage_buckets), 20)
-        self.assertEqual(len(data.usage_buckets), 46)
+        self.assertEqual(len(data.usage_buckets), 30)
 
     def test_unknown_or_wrong_window_cannot_display_full_remaining(self):
         for rates in ({}, {'rateLimits':{'primary':{'windowDurationMins':300,'usedPercent':0,'resetsAt':1789000000}}}):
@@ -62,7 +62,7 @@ class DataTests(unittest.TestCase):
 
     def test_empty_history_is_not_demo_history(self):
         data = self.build(replace(source(), usage={'dailyUsageBuckets':[]}))
-        self.assertEqual(data.usage_buckets, (0,) * 46)
+        self.assertEqual(data.usage_buckets, (0,) * 30)
 
     def test_unknown_history_is_not_zero(self):
         for usage in ({}, {'dailyUsageBuckets':None}):
