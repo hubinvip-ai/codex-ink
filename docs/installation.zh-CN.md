@@ -67,13 +67,11 @@ python3 tools/build_companion.py
 
 ## 更新已有应用
 
-- 替换应用前正常退出 Codex Ink。
-- 保持应用与 Python 路径稳定；hooks 会验证脚本路径和内容，替换应用包可能改变这些文件。
-- 若旧 hooks 仍指向 `EInkCompanion.app/Contents/Resources/runtime/`，继续保留原址文件。可见应用改名后，这些文件仍有用途。
-- 脚本或路径变化可能需要受控恢复/接管及重新信任；本预览版没有自动升级迁移功能。
-- 早期自定义 `--state-dir` 安装升级时，先沿用原参数启动一次，再关闭并开启“登录时打开”，保存目录选择。
+在独立输出目录构建新版，然后运行生成的 `更新 Codex Ink.command`。它默认更新 `~/Applications/Codex Ink.app`，等待当前发送结束，保留已信任的 `runtime`，替换 `sync-runtime` 并重启应用。旧版留作回退；启动验证最多等待 90 秒。普通更新无需退出 Codex 或重新信任未改变的 hooks。
 
-恢复和接管细节见[操作说明](companion-operator.md)。避免旧 CLI、手机控制器与伴侣应用同时发送到同一屏幕。
+其他安装位置可通过更新器的 `--target-app` 指定。现有配置必须通过检查；首次安装或真正修改 hooks 路径、内容时，仍走受控配置与信任流程。不要删除旧 hooks 引用的运行时目录。设备绑定、设置与登录启动记录保持原样。
+
+避免多个发送端同时控制同一屏幕，详见[操作说明](companion-operator.md)。
 
 ## 常见问题
 

@@ -6,6 +6,19 @@ enum DisplayLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
     var title: String { self == .chinese ? "简体中文" : "English" }
     var locale: Locale { Locale(identifier: self == .chinese ? "zh_CN" : "en_US") }
+    func menuErrorSummary(_ source: String) -> String {
+        switch source {
+        case "蓝牙权限未允许。请在系统设置中允许伴侣应用后重试。",
+             "蓝牙权限未允许。请在系统设置中允许此伴侣应用。":
+            return self == .english ? "Bluetooth access denied" : "蓝牙权限未开启"
+        default:
+            let firstLine = text(source).split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+            let summary = firstLine.components(separatedBy: "。")[0]
+                .components(separatedBy: ". ")[0].trimmingCharacters(in: .whitespaces)
+            let limit = self == .english ? 36 : 18
+            return summary.count > limit ? String(summary.prefix(limit)) + "…" : summary
+        }
+    }
     func text(_ source: String) -> String {
         guard self == .english else { return source }
         if let translated = Self.englishStrings[source] { return translated }
@@ -38,8 +51,11 @@ enum DisplayLanguage: String, Codable, CaseIterable, Identifiable, Sendable {
         "退出": "Quit",
         "继续同步": "Resume sync",
         "暂停同步": "Pause sync",
+        "正在暂停…": "Pausing…",
         "查看预览": "Preview",
         "设置…": "Settings…",
+        "查看详情…": "View details…",
+        "暂无记录": "No records yet",
         "退出 Codex Ink": "Quit Codex Ink",
         "尚无成功记录": "No successful record",
         "停止伴侣同步并恢复本应用旧配置？": "Stop sync and restore the previous configuration?",

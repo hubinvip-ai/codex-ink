@@ -67,8 +67,90 @@ class WorkerTests(unittest.TestCase):
 
     def start(self):
         self.worker.tick()
-        self.now += 5
+        self.now += 30
         return self.worker.tick()
+
+    def test_merge_waits_thirty_seconds(self):
+        self.worker.tick()
+        self.now = 129
+        self.assertEqual(self.worker.tick()['status'], 'pending')
+        self.assertEqual(self.sent, [])
+        self.now = 130
+        self.assertEqual(self.worker.tick()['status'], 'sent')
+
+    def test_cooldown_survives_restart_and_sends_latest(self):
+        self.journal.request(self.now, force=True)
+        self.worker.tick()
+        self.now = 101
+        self.event('Stop')
+        self.worker.tick()
+        restarted = ReliableWorker(self.journal, self.state_file, render_state, self.send, clock=lambda:self.now)
+        self.now = 279
+        self.assertEqual(restarted.tick()['status'], 'pending')
+        self.assertEqual(len(self.sent), 1)
+        self.now = 280
+        self.assertEqual(restarted.tick()['status'], 'sent')
+        self.assertEqual(self.sent, [(0,0,0), (198,40,40)])
+
+    def test_timestamp_only_pixel_changes_skip_but_force_sends(self):
+        def render(state):
+            image = render_state(state)
+            image.putpixel((0, 0), (0,0,0) if self.now == 100 else (198,40,40))
+            image.info['codex_content_hash'] = 'a' * 64
+            return image
+        self.worker.render = render
+        self.journal.request(self.now, force=True)
+        self.worker.tick()
+        self.now = 300
+        self.journal.request(260)
+        self.assertEqual(self.worker.tick()['status'], 'unchanged')
+        self.assertEqual(len(self.sent), 1)
+        self.assertEqual(self.journal.read()['last_sent_at'], 100)
+        self.journal.request(self.now, force=True)
+        self.assertEqual(self.worker.tick()['status'], 'sent')
+        self.assertEqual(len(self.sent), 2)
+
+    def test_failed_semantic_frame_is_not_cached(self):
+        def render(state):
+            image = render_state(state)
+            image.info['codex_content_hash'] = 'a' * 64
+            return image
+        self.worker.render = render
+        def failed(frame, owner_fd):
+            raise SyncFailure('send_failed')
+        self.worker.send = failed
+        self.journal.request(self.now, force=True)
+        self.assertEqual(self.worker.tick()['status'], 'retrying')
+        self.worker.send = self.send
+        self.now += 5
+        self.assertEqual(self.worker.tick()['status'], 'sent')
+        self.assertEqual(len(self.sent), 1)
+
+    def test_preview_does_not_replace_sent_content_identity(self):
+        def render(state):
+            image = render_state(state)
+            image.info['codex_content_hash'] = 'a' * 64 if self.now == 100 else 'b' * 64
+            return image
+        self.worker.render = render
+        self.journal.request(self.now, force=True)
+        self.worker.tick()
+        self.now = 101
+        self.event('Stop')
+        self.worker.tick(no_push=True)
+        self.worker.tick()
+        self.now = 280
+        self.assertEqual(self.worker.tick()['status'], 'sent')
+        self.assertEqual(self.sent, [(0,0,0), (198,40,40)])
+
+    def test_periodic_poll_waits_ten_minutes(self):
+        self.journal.request(self.now, force=True)
+        self.worker.tick()
+        before = self.journal.read()['requested_revision']
+        self.now = 699
+        self.assertEqual(self.worker.tick()['status'], 'idle')
+        self.assertEqual(self.journal.read()['requested_revision'], before)
+        self.now = 700
+        self.assertEqual(self.worker.tick()['status'], 'pending')
 
     def test_stop_arriving_during_send_is_delivered_next(self):
         def sender(frame, owner_fd):
@@ -80,6 +162,8 @@ class WorkerTests(unittest.TestCase):
         self.start()
         state = self.journal.read()
         self.assertGreater(state['requested_revision'], state['acknowledged_revision'])
+        self.worker.tick()
+        self.now += 180
         self.worker.tick()
         self.assertEqual(self.sent, [(0,0,0), (198,40,40)])
         self.assertEqual(self.journal.read()['requested_revision'], self.journal.read()['acknowledged_revision'])
@@ -94,6 +178,8 @@ class WorkerTests(unittest.TestCase):
         self.worker.send = sender
         self.start()
         self.worker.tick()
+        self.now += 180
+        self.worker.tick()
         self.assertEqual(self.sent, [(0,0,0), (198,40,40)])
 
     def test_state_written_without_registration_is_recovered(self):
@@ -101,7 +187,7 @@ class WorkerTests(unittest.TestCase):
         self.event('Stop')
         restarted = ReliableWorker(self.journal, self.state_file, render_state, self.send, clock=lambda:self.now)
         restarted.tick()
-        self.now += 5
+        self.now += 180
         restarted.tick()
         self.assertEqual(self.sent, [(0,0,0), (198,40,40)])
 
@@ -115,7 +201,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_snapshot_is_read_after_claiming_revision(self):
         self.worker.tick()
-        self.now += 5
+        self.now += 30
         original = self.journal.begin
         def begin(now):
             ticket = original(now)
@@ -160,10 +246,10 @@ class WorkerTests(unittest.TestCase):
         self.start()
         self.now += 10
         self.journal.request(self.now)
-        self.now += 5
-        self.worker.tick()
+        self.now += 180
+        self.assertEqual(self.worker.tick()['status'], 'unchanged')
         self.assertEqual(len(self.sent), 1)
-        self.assertEqual(self.journal.read()['last_sent_at'], 105)
+        self.assertEqual(self.journal.read()['last_sent_at'], 130)
 
     def test_force_survives_later_ordinary_request(self):
         self.start()
@@ -220,7 +306,7 @@ class WorkerTests(unittest.TestCase):
             self.assertTrue(idle.wait(3))
             self.event('Stop')
             self.journal.request(self.now, force=True)
-            self.assertTrue(delivered.wait(3), 'idle consumer did not wake')
+            self.assertTrue(delivered.wait(7), 'idle consumer did not wake')
         finally:
             stopping.set()
             thread.join(timeout=3)
@@ -257,10 +343,10 @@ class WorkerTests(unittest.TestCase):
     def test_periodic_request_refreshes_without_hook_event(self):
         self.start()
         previous = self.journal.read()['requested_revision']
-        self.now = 160
+        self.now = 700
         self.worker.tick()
         self.assertGreater(self.journal.read()['requested_revision'], previous)
-        self.now += 5
+        self.now += 30
         self.worker.tick()
         self.assertEqual(self.journal.read()['requested_revision'], self.journal.read()['acknowledged_revision'])
 
@@ -302,7 +388,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_actual_sender_keeps_lock_after_consumer_is_killed(self):
         binary = self.root/'slow-sender'
-        binary.write_text(python_executable_header()+ '''import socket, sys
+        binary.write_text(python_executable_header() + '''import socket, sys
 from pathlib import Path
 frame = Path(sys.argv[sys.argv.index('--input') + 1])
 client = socket.socket(socket.AF_UNIX)

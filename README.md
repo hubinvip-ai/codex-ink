@@ -12,7 +12,7 @@ Keep your Codex usage and task status on a small display beside your Mac. Codex 
 
 ## Development preview
 
-The current app version is **0.3.0**. Source builds and the local workflow have been tested on one Apple Silicon Mac. A standalone installer, Developer ID signing, notarization and a second-machine validation are still pending.
+The current app version is **0.4.0**. Source builds and the local workflow have been tested on one Apple Silicon Mac. A standalone installer, Developer ID signing, notarization and a second-machine validation are still pending.
 
 Project code is licensed under [GPL-3.0-only](LICENSE). Fonts and other third-party resources retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). This preview is built from source; no ready-to-install app download is provided.
 
@@ -75,9 +75,9 @@ Fresh installations start in preview-only mode. Login startup is opt-in and reme
 
 ## Validation status
 
-The public source snapshot passed **243 Python test cases**, including a native test driver with **55 Swift checks**, plus 2 core Swift suites. A fresh virtual environment, release build, app packaging and strict ad-hoc signature verification were checked locally. See [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions) for hosted build results. On the maintainer’s Mac, configuration recovery, hook migration and automatic refresh were also checked; these are separate from hardware-free tests.
+The public source snapshot passed **280 Python test cases**, including a native test driver with **63 Swift checks**, plus 2 core Swift suites. Release build, app packaging and strict ad-hoc signature verification were checked locally. See [GitHub Actions](https://github.com/hubinvip-ai/codex-ink/actions) for hosted build results. On the maintainer’s Mac, configuration recovery, hook migration and automatic refresh were also checked; these are separate from hardware-free tests.
 
-These checks do not establish physical display appearance, a real logout/login cycle, 24-hour reliability or compatibility with another Mac. See the [release notes](docs/releases/v0.3.0.md). Counts refer to a recorded local check, not a hosted CI badge.
+These checks do not establish physical display appearance, a real logout/login cycle, 24-hour reliability or compatibility with another Mac. See the [release notes](docs/releases/v0.4.0.md). Counts refer to a recorded local check, not a hosted CI badge.
 
 ## Acknowledgements
 

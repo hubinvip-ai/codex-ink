@@ -191,6 +191,7 @@ final class CompanionOwnerLock {
 struct CompanionOptions {
     let stateDirectory: URL
     let runtimeRoot: URL
+    var hookRuntimeRoot: URL? = nil
     static let bundleID = "com.ben.codex-eink.companion.dev"
     static func parse(_ args: [String], resources: URL? = Bundle.main.resourceURL) throws -> Self {
         var values: [String: String] = [:]
@@ -205,6 +206,13 @@ struct CompanionOptions {
         let standard = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/CodexEInk/companion", isDirectory: true)
         guard let root = values["--runtime-root"].map({ URL(fileURLWithPath: $0, isDirectory: true) }) ?? resources?.appendingPathComponent("runtime", isDirectory: true) else { throw CompanionError.invalidArguments }
         let selected = try values["--state-dir"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? StartupStore.standard.load() ?? standard
+        if values["--runtime-root"] == nil, let resources {
+            let syncRoot = resources.appendingPathComponent("sync-runtime", isDirectory: true)
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: syncRoot.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                return Self(stateDirectory: selected, runtimeRoot: syncRoot, hookRuntimeRoot: root)
+            }
+        }
         return Self(stateDirectory: selected, runtimeRoot: root)
     }
     var stateFile: URL { stateDirectory.appendingPathComponent("status.json") }
@@ -218,8 +226,9 @@ struct CompanionOptions {
          "preview", "--codex-binary", settings.codexBinary, "--validated", "--language", settings.language.rawValue]
     }
     func setupArguments(action: String, settings: CompanionSettings) -> [String] {
-        var args = [script("companion_setup.py"), "--state-dir", stateDirectory.path, action]
-        if action == "install" { args += ["--python", settings.pythonBinary, "--runtime-root", runtimeRoot.path] }
+        let hooks = hookRuntimeRoot ?? runtimeRoot
+        var args = [hooks.appendingPathComponent("tools/companion_setup.py").path, "--state-dir", stateDirectory.path, action]
+        if action == "install" { args += ["--python", settings.pythonBinary, "--runtime-root", hooks.path] }
         return args
     }
 }
@@ -486,6 +495,21 @@ enum StrictJSON {
     }
 }
 
+/// A receipt written to the pipe is not yet a committed worker tick. Status
+/// messages are ordered after send requests; require a terminal status after
+/// receipt delivery, without waiting for subsequently queued hook revisions.
+struct WorkerReceiptDrain {
+    private(set) var isPending = false
+    private var receiptDelivered = false
+    mutating func begin() { isPending = true; receiptDelivered = false }
+    mutating func deliveredReceipt() { receiptDelivered = true }
+    mutating func status(_ value: String) {
+        if receiptDelivered && ["sent", "unchanged", "retrying", "blocked", "paused"].contains(value) {
+            isPending = false
+        }
+    }
+}
+
 struct RunGate {
     var enabled = false
     var bound = false
@@ -498,7 +522,7 @@ struct RunGate {
     // A send emitted just before pause may arrive after pause was requested.
     // Keep that revision retryable; it is not evidence of a broken binding.
     var rejectedRequestCode: String {
-        enabled && bound && (inspectionUnavailable || (paused && setupReady)) ? "send_failed" : "device_not_configured"
+        stopping || (enabled && bound && (inspectionUnavailable || (paused && setupReady))) ? "send_failed" : "device_not_configured"
     }
 }
 

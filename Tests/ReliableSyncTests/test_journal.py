@@ -40,8 +40,8 @@ class JournalTests(unittest.TestCase):
     def test_continuous_events_do_not_postpone_debounce(self):
         for time in (100, 101, 102, 104):
             self.journal.request(time)
-        self.assertIsNone(self.journal.begin(104))
-        self.assertEqual(self.journal.begin(105)['requested_revision'], 4)
+        self.assertIsNone(self.journal.begin(129))
+        self.assertEqual(self.journal.begin(130)['requested_revision'], 4)
 
     def test_deduplication_does_not_claim_new_send(self):
         self.journal.request(100, force=True)

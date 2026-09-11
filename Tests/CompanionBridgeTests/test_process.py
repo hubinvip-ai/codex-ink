@@ -67,6 +67,7 @@ for line in sys.stdin:
         p,m=self.launch()
         self.next(m,'ready')
         self.command(p,'resume')
+        self.command(p,'refresh')
         message=self.next(m,'send')
         self.command(p,'send_result',request_id=message['request_id'],ok=True,packets=129,bytes=30511,disconnected=True)
         end=time.monotonic()+5
@@ -84,7 +85,7 @@ for line in sys.stdin:
     def test_eof_cancels_blocked_render_child(self):
         marker=self.root/'child-started'
         self.binary.write_text(python_executable_header()+'import time\nfrom pathlib import Path\nPath('+repr(str(marker))+').write_text("started")\ntime.sleep(30)\n')
-        p,m=self.launch();self.next(m,'ready');self.command(p,'resume')
+        p,m=self.launch();self.next(m,'ready');self.command(p,'resume');self.command(p,'refresh')
         end=time.monotonic()+3
         while not marker.exists() and time.monotonic()<end:threading.Event().wait(.02)
         self.assertTrue(marker.exists())
@@ -92,6 +93,13 @@ for line in sys.stdin:
         self.assertEqual(p.wait(timeout=3),0)
         data=json.loads((self.root/'state/sync-journal.json').read_text())
         self.assertEqual(data['acknowledged_revision'],0)
+
+    def test_render_adapter_preserves_business_digest(self):
+        from tools.sync_adapters import CodexRenderer
+        from tools.codex_status_core import empty_hook_state
+        image = CodexRenderer(self.binary, validated=True)(empty_hook_state())
+        self.assertEqual(image.size, (400, 300))
+        self.assertRegex(image.info.get('codex_content_hash', ''), r'^[0-9a-f]{64}$')
 
     def test_validated_preview_outputs_only_native_frame(self):
         p=subprocess.run([sys.executable,str(ROOT/'tools/codex_eink_reliable.py'),'--state-dir',str(self.root/'preview'),

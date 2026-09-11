@@ -170,8 +170,12 @@ class SyncJournal:
             if state['failure_count']:
                 if state['retry_at'] is None or now < state['retry_at']:
                     return None
-            if state['force_revision'] <= state['acknowledged_revision'] and now < state['pending_since'] + 5:
-                return None
+            if state['force_revision'] <= state['acknowledged_revision']:
+                ready_at = state['pending_since'] + 30
+                if state['last_sent_at'] is not None:
+                    ready_at = max(ready_at, state['last_sent_at'] + 180)
+                if now < ready_at:
+                    return None
             state['last_attempt_at'] = now
             return dict(state)
         return self._change(operation)

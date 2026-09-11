@@ -207,7 +207,8 @@ class BridgeWorker:
                 while not self.session.stopping.is_set():
                     resume,refresh,recovery=self.session.commands()
                     if recovery: self.journal.retry(time.time())
-                    elif resume or refresh: self.journal.request(time.time(),force=True)
+                    elif refresh: self.journal.request(time.time(),force=True)
+                    elif resume: self.journal.request(time.time())
                     result={'status':'paused'} if self.session.paused.is_set() else self.worker._tick_owned(owner_fd=owner)
                     if self.data_read_at is not None:
                         result={**result,'data_read_at':self.data_read_at}
@@ -216,7 +217,7 @@ class BridgeWorker:
                         previous=result
                     if result['status'] in {'sent','unchanged'}:
                         continue
-                    self.session.wake.wait(1)
+                    self.session.wake.wait(5)
                     self.session.wake.clear()
         except (OSError,JournalError,SyncFailure):
             self.session.close('send_failed')

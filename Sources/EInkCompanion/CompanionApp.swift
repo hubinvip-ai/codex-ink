@@ -11,8 +11,17 @@ struct CompanionApp: App {
         } label: {
             HStack(spacing: 4) {
                 Image(nsImage: menuBarIcon).accessibilityHidden(true)
-                Text("Codex Ink · \(model.text(model.statusLabel))")
+                if model.statusLabel == "同步中" || model.statusLabel == "需要处理" {
+                    Image(systemName: "circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(model.statusLabel == "需要处理" ? Color.red : Color.blue)
+                        .font(.system(size: 5))
+                        .accessibilityHidden(true)
+                }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Codex Ink · \(model.text(model.statusLabel))")
+            .help("Codex Ink · \(model.text(model.statusLabel))")
         }
         .menuBarExtraStyle(.menu)
     }
@@ -78,26 +87,38 @@ final class CompanionAppDelegate: NSObject, NSApplicationDelegate {
 
 struct CompanionMenu: View {
     @ObservedObject var model: CompanionModel
-    private var localizedDeviceLabel: String { model.settings.deviceName.map { $0 + (model.settings.language == .english ? " · Bound" : " · 已绑定") } ?? model.text("尚未绑定屏幕") }
+    private var localizedDeviceLabel: String { model.settings.deviceName ?? model.text("尚未绑定屏幕") }
     var showSettings: () -> Void
     var body: some View {
         Text(model.text(model.statusLabel))
         Text(localizedDeviceLabel)
         Text("\(model.settings.language == .english ? "Data read: " : "数据读取：")\(formatted(model.lastDataRead))")
-        Text("\(model.settings.language == .english ? "Last sent: " : "成功下发：")\(formatted(model.lastSent))")
-        if let error = model.errorMessage { Text(model.text(error)) }
+        Text("\(model.settings.language == .english ? "Last synced: " : "上次同步：")\(formatted(model.lastSent))")
+        if let error = model.errorMessage {
+            Text(model.settings.language.menuErrorSummary(error))
+        }
         Divider()
-        Button(model.text(model.primaryLabel)) {
-            Task { if await model.performPrimaryAction() != nil { showSettings() } }
-        }.disabled(!model.primaryActionEnabled)
-        Button(model.settings.paused ? model.text("继续同步") : model.text("暂停同步")) { Task { await model.setPaused(!model.settings.paused) } }
-            .disabled(!model.settings.syncEnabled || model.busy || model.stopping)
+        if case .resume = model.primaryAction {
+            // Resume has a single home in the pause/resume row below.
+        } else {
+            Button(model.text(model.primaryLabel)) {
+                Task { if await model.performPrimaryAction() != nil { showSettings() } }
+            }.disabled(!model.primaryActionEnabled || model.pausing)
+        }
+        if model.settings.syncEnabled {
+            Button(model.pausing ? model.text("正在暂停…") : model.settings.paused ? model.text("继续同步") : model.text("暂停同步")) {
+                Task { await model.setPaused(!model.settings.paused) }
+            }.disabled(!model.canMutate || model.pausing)
+        }
         Button(model.text("查看预览")) { showSettings(); Task { await model.preview() } }.disabled(model.busy || model.stopping)
-        Button(model.text("设置…"), action: showSettings).keyboardShortcut(",")
+        Button(model.text(model.errorMessage == nil ? "设置…" : "查看详情…")) {
+            if model.errorMessage != nil { model.settingsSection = .overview }
+            showSettings()
+        }.keyboardShortcut(",")
         Divider()
         Button(model.text("退出 Codex Ink")) { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
-    private func formatted(_ date: Date?) -> String { date.map { $0.formatted(.dateTime.locale(model.settings.language.locale)) } ?? model.text("尚无成功记录") }
+    private func formatted(_ date: Date?) -> String { date.map { $0.formatted(.dateTime.locale(model.settings.language.locale)) } ?? model.text("暂无记录") }
 }
 
 struct CompanionSettingsView: View {

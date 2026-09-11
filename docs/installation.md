@@ -69,13 +69,11 @@ Disabling login startup preserves the directory choice and does not trigger re-r
 
 ## Updating an existing install
 
-- Quit Codex Ink normally before replacing its app bundle.
-- Keep app/Python paths stable. Hooks validate script paths and content; replacing the bundle can change those files.
-- If old hooks reference `EInkCompanion.app/Contents/Resources/runtime/`, retain those original files. Renaming the visible app does not remove that dependency.
-- Script or path changes may require controlled restore/setup and renewed hook trust. This preview does not provide automatic upgrade migration.
-- For an older custom `--state-dir` install, open once with the original argument, then turn login startup off and on to save the selection.
+Build the new version in a separate output directory, then run the generated `更新 Codex Ink.command`. It targets `~/Applications/Codex Ink.app`, waits for active transmission to settle, preserves the trusted `runtime`, updates `sync-runtime`, and restarts the app. It retains a rollback copy and validates startup for up to 90 seconds. Ordinary updates do not require quitting Codex or trusting unchanged hooks again.
 
-The [operator guide](companion-operator.md) covers recovery in detail. Avoid multiple app, CLI or phone controllers sending to the same display.
+For a different installed path, use the updater's explicit `--target-app` option. An existing setup must pass inspection. First-time setup and intentional changes to hook paths or content still require the controlled setup/trust workflow. Keep older runtime directories referenced by existing hooks. Settings, binding and login-startup records are preserved.
+
+Avoid multiple app, CLI or phone controllers sending to the same display. See the [operator guide](companion-operator.md).
 
 ## Troubleshooting
 

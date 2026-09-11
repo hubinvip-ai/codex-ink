@@ -29,6 +29,17 @@ func XCTUnwrap<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #lin
 
 @main struct NativeTests {
     @MainActor static func main() async throws {
+        let routing = RuntimeRoutingTests()
+        defer { routing.tearDown() }
+        ShutdownTests().testReceiptNeedsSubsequentTerminalStatusToSettle()
+        ShutdownTests().testFailureOrPauseSettlesOnlyAfterReceiptAndNewRequestResets()
+        try await ShutdownTests().testShutdownWaitsForWorkerToSettleDeliveredReceiptBeforeStop()
+        try await ShutdownTests().testShutdownPausesWorkerBeforeStopWithoutChangingSavedPause()
+        routing.testStoppingRejectsLateSendAsRetryable()
+        try routing.testNewPackageRoutesSyncAndFrozenHooksSeparately()
+        try routing.testLegacyPackageKeepsSingleRuntime()
+        try routing.testExplicitRuntimeOverridesBothBundledDirectories()
+        print("PASS independent sync runtime routing / legacy fallback / explicit override")
         try await LanguageTests().testLanguageSwitchRestartsRendererAndPreservesPause()
         try LanguageTests().testLegacySettingsAndLanguageRoundTrip()
         LanguageTests().testTranslationPreservesUserContentAndSupportsErrors()
@@ -105,6 +116,6 @@ func XCTUnwrap<T>(_ value: T?, file: StaticString = #filePath, line: UInt = #lin
         await preflight.testReadOnlyInspectorTimeoutIsBoundedWhenDescendantHoldsStdout()
         await preflight.testTransientInspectionFailuresRetryButConflictsRemainBlocked()
         print("PASS fresh setup preflight / busy and stale identity / total deadline")
-        print("PASS 55 native tests (no app launch or Bluetooth)")
+        print("PASS 63 native tests (no app launch or Bluetooth)")
     }
 }

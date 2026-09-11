@@ -25,9 +25,9 @@ class NativeTests(unittest.TestCase):
             isolated_home.mkdir()
             environment = dict(os.environ, COMPANION_TEST_PYTHON=sys.executable,
                                CFFIXED_USER_HOME=str(isolated_home))
-            result = subprocess.run([str(executable)], capture_output=True, text=True, timeout=90, env=environment)
+            result = subprocess.run([str(executable)], capture_output=True, text=True, timeout=180, env=environment)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("PASS 55 native tests", result.stdout)
+            self.assertIn("PASS 63 native tests", result.stdout)
             print(result.stdout)
 
 

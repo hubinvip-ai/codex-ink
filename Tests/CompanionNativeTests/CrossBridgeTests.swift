@@ -116,7 +116,7 @@ private final class CrossBridgeProbe {
         try host.start(executable: settings.pythonBinary, arguments: options.bridgeArguments(settings: settings, sessionID: sessionID), sessionID: sessionID)
     }
     func wait(_ predicate: () -> Bool) async {
-        let deadline = Date().addingTimeInterval(8)
+        let deadline = Date().addingTimeInterval(45)
         while !predicate() && failure == nil && Date() < deadline { try? await Task.sleep(for: .milliseconds(20)) }
         XCTAssertNil(failure)
         if !predicate() { XCTFail("bridge timeout: ready=\(ready), status=\(status ?? "none"), code=\(statusError ?? "none"), sends=\(sendCount), running=\(host.isRunning), state=\(options.stateDirectory.path)") }

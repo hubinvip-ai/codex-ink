@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from tools.codex_status_core import empty_hook_state
-from tools.sync_journal import ERROR_CODES, SyncJournal, atomic_write
+from tools.sync_journal import ERROR_CODES, SyncJournal, atomic_write, _valid_hash
 
 
 class SyncFailure(Exception):
@@ -67,7 +67,9 @@ class ReliableWorker:
         self.render = render
         self.send = send
         self.clock = clock
-        self.next_poll = clock() + 60
+        self.next_poll = clock() + 600
+        self.last_content_hash = None
+        self.last_content_frame_hash = None
         self.preview = journal.directory / 'preview.png'
 
     def tick(self, *, no_push=False):
@@ -80,7 +82,10 @@ class ReliableWorker:
 
     def _render(self, state):
         try:
-            return frame_bytes(self.render(state))
+            image = self.render(state)
+            digest, content = frame_bytes(image)
+            content_hash = image.info.get('codex_content_hash')
+            return digest, content, content_hash if _valid_hash(content_hash) else None
         except (SyncFailure, SyncDeferred):
             raise
         except Exception as error:
@@ -99,14 +104,14 @@ class ReliableWorker:
         try:
             source = read_hook_state(self.state_file)
             if no_push:
-                _, content = self._render(source)
+                _, content, _ = self._render(source)
                 atomic_write(self.preview, content)
                 return {'status':'preview'}
             now = self.clock()
             self.journal.observe(state_digest(source), now)
             if now >= self.next_poll:
                 self.journal.request(now)
-                self.next_poll = now + 60
+                self.next_poll = now + 600
             ticket = self.journal.begin(now)
             if ticket is None:
                 state = self.journal.read()
@@ -116,9 +121,11 @@ class ReliableWorker:
             # The revision is captured BEFORE reading render input. Reading it in
             # the opposite order can acknowledge a newly queued revision with old data.
             source = read_hook_state(self.state_file)
-            digest, content = self._render(source)
+            digest, content, content_hash = self._render(source)
             atomic_write(self.preview, content)
-            changed = digest != ticket['last_sent_frame_hash']
+            same_content = (content_hash is not None and content_hash == self.last_content_hash
+                            and self.last_content_frame_hash == ticket['last_sent_frame_hash'])
+            changed = not same_content and digest != ticket['last_sent_frame_hash']
             forced = ticket['force_revision'] > ticket['acknowledged_revision']
             if changed or forced:
                 frames = self.journal.directory / 'frames'
@@ -139,7 +146,11 @@ class ReliableWorker:
                 finally:
                     path.unlink(missing_ok=True)
             revision = ticket['requested_revision']
-            self.journal.acknowledge(revision, digest, self.clock(), sent=changed or forced)
+            # Semantic dedup may ignore clock pixels. Keep the actual sent hash.
+            delivered_hash = digest if changed or forced else ticket['last_sent_frame_hash']
+            self.journal.acknowledge(revision, delivered_hash, self.clock(), sent=changed or forced)
+            self.last_content_hash = content_hash
+            self.last_content_frame_hash = delivered_hash
             return {'status':'sent' if changed or forced else 'unchanged', 'revision':revision}
         except SyncDeferred:
             return {'status':'paused'}
@@ -171,4 +182,4 @@ class ReliableWorker:
                     previous = result
                 if result['status'] in {'sent', 'unchanged'}:
                     continue
-                stopping.wait(1)
+                stopping.wait(5)

@@ -53,6 +53,7 @@ final class CompanionModel: ObservableObject {
     private let worker = WorkerHost()
     private let helper = HelperRunner()
     private let inspector = HelperRunner()
+    private var receiptDrain = WorkerReceiptDrain()
     private var correlation: SessionGuard?
     private var restartPolicy = RestartPolicy()
     private var restartTask: Task<Void, Never>?
@@ -167,10 +168,11 @@ final class CompanionModel: ObservableObject {
             owner = try CompanionOwnerLock(url: lockURL)
         } catch { errorMessage = error.localizedDescription; return }
         refreshLoginStatus()
-        guard !settingsDamaged else { return }
+        guard !settingsDamaged else { startupDiagnostic("settings_invalid"); return }
         await inspectSetup()
         readJournal()
         await ensureWorker()
+        startupDiagnostic("started enabled=\(settings.syncEnabled) paused=\(settings.paused) bound=\(settings.deviceIdentifier != nil) worker=\(worker.isRunning)")
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(15))
@@ -248,12 +250,18 @@ final class CompanionModel: ObservableObject {
         await ensureWorker()
     }
 
+    private func startupDiagnostic(_ value: String) {
+        guard ProcessInfo.processInfo.environment["CODEX_INK_UPDATE_DIAGNOSTICS"] == "1" else { return }
+        FileHandle.standardError.write(Data(("CodexInk " + value + "\n").utf8))
+    }
+
     func inspectSetup() async {
         guard owner != nil, !settingsDamaged, !inspector.isRunning, !stopping, let options else { return }
         let epoch = maintenanceEpoch
         do {
             let result = try await inspector.run(executable: settings.pythonBinary, arguments: options.setupArguments(action: "inspect", settings: settings), timeout: 10, limit: 65_536, readOnly: true)
             let inspection = try SetupInspection.decode(result.stdout)
+            startupDiagnostic("inspection stage=\(inspection.stage) blockers=\(inspection.blockers.joined(separator: ","))")
             guard epoch == maintenanceEpoch, !stopping else { return }
             setup = inspection
             inspectionUnavailable = inspection.isTemporarilyUnavailable
@@ -268,6 +276,7 @@ final class CompanionModel: ObservableObject {
         } catch {
             guard epoch == maintenanceEpoch else { return }
             setup = nil
+            startupDiagnostic("inspection_transport_failed: \(error.localizedDescription)")
             errorMessage = "无法确认安装状态。" + error.localizedDescription
             if case CompanionError.unavailable = error { inspectionUnavailable = true }
             else { inspectionUnavailable = false }
@@ -402,9 +411,24 @@ final class CompanionModel: ObservableObject {
         reconcileWorker()
     }
     func shutdown() async -> Bool {
-        stopping = true; maintenanceEpoch = UUID()
+        stopping = true
         pollTask?.cancel(); pollTask = nil
         restartTask?.cancel(); restartTask = nil
+        pauseWorker()
+        // The stopping gate rejects new sends and pending preflight work. Keep
+        // this session and maintenance epoch valid until the in-flight receipt
+        // is delivered; quiesce invalidates them and cancels BLE afterward.
+        let drainDeadline = ProcessInfo.processInfo.systemUptime + 130
+        while ble.isSending && ProcessInfo.processInfo.systemUptime < drainDeadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        // A completed radio callback only writes the receipt to stdin. Wait
+        // for this worker tick to publish its post-commit status before stop.
+        let settlementDeadline = ProcessInfo.processInfo.systemUptime + 10
+        while receiptDrain.isPending && worker.isRunning && ProcessInfo.processInfo.systemUptime < settlementDeadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        let drained = !ble.isSending && !receiptDrain.isPending
         let clean = await quiesce()
         if helper.isRunning || inspector.isRunning {
             // Let guarded setup finish its transaction instead of killing it mid-write.
@@ -413,7 +437,7 @@ final class CompanionModel: ObservableObject {
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
-        return clean && !worker.isRunning && !helper.isRunning && !inspector.isRunning
+        return drained && clean && !worker.isRunning && !helper.isRunning && !inspector.isRunning
     }
 
     func refreshLoginStatus() { loginState = LoginItemState(SMAppService.mainApp.status) }
@@ -443,6 +467,7 @@ final class CompanionModel: ObservableObject {
         do {
             let id = UUID().uuidString
             expectedWorkerExit = false
+            receiptDrain = WorkerReceiptDrain()
             correlation = SessionGuard(sessionID: id)
             workerReady = false; resumeSent = false
             try worker.start(executable: settings.pythonBinary, arguments: options.bridgeArguments(settings: settings, sessionID: id), sessionID: id)
@@ -468,6 +493,7 @@ final class CompanionModel: ObservableObject {
             reconcileWorker()
         case .status(_, let payload):
             guard workerReady else { workerFault(CompanionError.invalidProtocol); return }
+            if let status = payload["status"]?.string { receiptDrain.status(status) }
             if let stamp = payload["data_read_at"]?.number, stamp.isFinite, stamp > 0, stamp <= Date().timeIntervalSince1970 + 60 {
                 lastDataRead = Date(timeIntervalSince1970: stamp)
                 sourceStatus = "最近一次真实数据读取成功"
@@ -484,6 +510,7 @@ final class CompanionModel: ObservableObject {
             let startedAt = ProcessInfo.processInfo.systemUptime
             do { try correlation?.begin(requestID: requestID, sessionID: sessionID) }
             catch { workerFault(error); return }
+            receiptDrain.begin()
             guard gate.mayRun, resumeSent, let identifier = settings.deviceIdentifier else {
                 complete(sessionID: sessionID, requestID: requestID, receipt: SendReceipt(errorCode: gate.rejectedRequestCode)); return
             }
@@ -543,8 +570,10 @@ final class CompanionModel: ObservableObject {
     }
     private func complete(sessionID: String, requestID: String, receipt: SendReceipt) {
         guard correlation?.complete(requestID: requestID, sessionID: sessionID) == true else { return }
-        do { try worker.sendResult(sessionID: sessionID, requestID: requestID, receipt: receipt) }
-        catch { workerFault(error) }
+        do {
+            try worker.sendResult(sessionID: sessionID, requestID: requestID, receipt: receipt)
+            receiptDrain.deliveredReceipt()
+        } catch { workerFault(error) }
         if !receipt.ok { errorMessage = failureDescription(receipt.errorCode ?? "send_failed") }
         pausing = false
         // lastSent is read only from the journal after the worker accepts the receipt.
