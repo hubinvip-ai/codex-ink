@@ -1,4 +1,5 @@
 from Tests.support import python_executable_header
+import errno
 import io
 import os
 import subprocess
@@ -160,7 +161,11 @@ while True:
                 try:
                     connection.sendall(b'ping')
                     answer = connection.recv(16)
-                except (BrokenPipeError, ConnectionResetError):
+                except OSError as error:
+                    # Darwin can report ENOTCONN after the peer has exited.
+                    # Timeouts and unrelated socket errors must still fail.
+                    if error.errno not in (errno.EPIPE, errno.ECONNRESET, errno.ENOTCONN):
+                        raise
                     answer = b''
                 self.assertEqual(answer, b'', 'old leaf remains alive after adapter returned failure')
                 self.assertEqual(results, ['send_timeout' if timeout else 'send_failed'])
