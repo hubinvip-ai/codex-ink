@@ -23,3 +23,16 @@ class DailyChartTests(unittest.TestCase):
         image = Image.new('RGB', (400,300), 'white')
         _draw_usage_chart(ImageDraw.Draw(image), (0,) * 30)
         self.assertTrue(all(image.getpixel((x,162)) == (255,255,255) for x in range(10,390)))
+
+    def test_weekly_peaks_use_real_values_with_ties_zero_and_partial_weeks(self):
+        # Window begins on Sunday and ends on Monday, crossing a year boundary.
+        values = [0] * 30
+        for index, value in {0:3, 1:5, 7:5, 15:1, 16:2, 22:6, 28:4, 29:1}.items():
+            values[index] = value
+        image = Image.new('RGB', (400,300), 'white')
+        _draw_usage_chart(ImageDraw.Draw(image), tuple(values), end_date=date(2026,1,12))
+        colors = [image.getpixel((x,163)) for x in range(400)
+                  if image.getpixel((x,163)) != (255,255,255)
+                  and (x == 0 or image.getpixel((x-1,163)) == (255,255,255))]
+        self.assertEqual(len(colors),30)
+        self.assertEqual({i for i,c in enumerate(colors) if c == (198,40,40)}, {0,1,7,16,22,29})

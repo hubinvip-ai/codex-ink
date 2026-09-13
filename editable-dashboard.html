@@ -147,6 +147,15 @@
           day.setDate(day.getDate() - 29 + i);
           if (day.getDay() === 1) mondays.add(i);
         }
+        const boundaries = [0, ...mondays, 30];
+        const peaks = new Set();
+        for (let group = 0; group < boundaries.length - 1; group++) {
+          const first = boundaries[group], last = boundaries[group + 1];
+          const maximum = Math.max(...values.slice(first, last));
+          if (maximum > 0) {
+            for (let i = first; i < last; i++) if (values[i] === maximum) peaks.add(i);
+          }
+        }
         const inkWidth = 380 - 29 * 2 - mondays.size * 4;
         let extra = 0;
         values.forEach((value, index) => {
@@ -154,7 +163,7 @@
           if (mondays.has(index)) extra += 4;
           const left = Math.floor(index * inkWidth / 30) + index * 2 + extra;
           const right = Math.floor((index + 1) * inkWidth / 30) + index * 2 + extra;
-          ctx.fillStyle = index === 21 ? '#c62828' : '#000000';
+          ctx.fillStyle = peaks.has(index) ? '#c62828' : '#000000';
           ctx.fillRect(left, 16 - height, right - left, height);
         });
       }

@@ -252,6 +252,12 @@ def _draw_usage_chart(draw: ImageDraw.ImageDraw, values: tuple[int, ...] | None 
     values = ((0,) * max(0, 30 - len(values)) + values)[-30:]
     start = end_date - timedelta(days=29)
     mondays = {i for i in range(1, 30) if (start + timedelta(days=i)).weekday() == 0}
+    boundaries = [0, *sorted(mondays), 30]
+    peaks = set()
+    for first, last in zip(boundaries, boundaries[1:]):
+        maximum = max(values[first:last])
+        if maximum > 0:
+            peaks.update(i for i in range(first, last) if values[i] == maximum)
     ink_width = 380 - 29 * 2 - len(mondays) * 4
     extra = 0
     for index, height in enumerate(usage_bar_heights(values)):
@@ -259,7 +265,7 @@ def _draw_usage_chart(draw: ImageDraw.ImageDraw, values: tuple[int, ...] | None 
             extra += 4
         left = 10 + index * ink_width // 30 + index * 2 + extra
         right = 10 + (index + 1) * ink_width // 30 + index * 2 + extra
-        draw.rectangle((left, 164 - height, right - 1, 163), fill=THIRD if index == 21 else BLACK)
+        draw.rectangle((left, 164 - height, right - 1, 163), fill=THIRD if index in peaks else BLACK)
 
 
 def _draw_dashed_rule(draw: ImageDraw.ImageDraw, y: int) -> None:
